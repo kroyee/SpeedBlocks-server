@@ -184,8 +184,18 @@ void Connections::handle() {
 		{
 			sf::String name, pass;
 			sf::Uint8 guest;
-			packet >> sender->udpPort >> guest >> sender->name >> sender->authpass;
-			if (guest) {
+			sf::Uint16 version;
+			packet >> version >> sender->udpPort >> guest >> sender->name >> sender->authpass;
+			if (version != clientVersion) {
+				packet.clear(); //9-Packet nr3
+				sf::Uint8 packetid = 9;
+				packet << packetid;
+				packetid=3;
+				packet << packetid;
+				send(*sender);
+				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
+			}
+			else if (guest) {
 				packet.clear(); //9-Packet nr1
 				sf::Uint8 packetid = 9;
 				packet << packetid;
@@ -193,7 +203,7 @@ void Connections::handle() {
 				packetid=2;
 				packet << packetid;
 				send(*sender);
-				std::cout << "Guest confirmed" << std::endl; // MYCKET VIKTIGT!!! + hämta info från uploadData om möjligt
+				std::cout << "Guest confirmed" << std::endl;
 			}
 			else
 				sender->thread = std::thread(&Client::authUser, sender);
