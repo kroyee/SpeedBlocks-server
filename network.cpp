@@ -125,25 +125,9 @@ void Connections::sendWelcome() { //0-Packet
 }
 
 void Connections::handle() {
-	if (gameData) {
-		sf::Uint16 dataid;
-		sf::Uint8 datacount;
-
-		sf::Packet tmppacket=packet; // Maintain internal reading position at the start
-		packet >> dataid >> datacount;
-
-		for (auto&& client : clients)
-			if (client.id == dataid) {
-				if ((datacount<50 && client.datacount>200) || client.datacount<datacount) {
-					client.datacount=datacount;
-					client.data=tmppacket;
-					client.datavalid=true;
-				}
-			}
-		return;
-	}
 	packet >> id;
-	std::cout << "Packet id: " << (int)id << std::endl;
+	if (id < 100)
+		std::cout << "Packet id: " << (int)id << std::endl;
 	switch (id) {
 		case 0: //Player wanting to join a room
 		{
@@ -328,6 +312,26 @@ void Connections::handle() {
 			}
 		}
 		break;
+		case 100:
+			sf::Uint16 dataid;
+			sf::Uint8 datacount;
+
+			packet >> dataid >> datacount;
+			for (int c=0; packet >> extractor.tmp[c]; c++) {}
+
+			for (auto&& client : clients)
+				if (client.id == dataid)
+					if ((datacount<50 && client.datacount>200) || client.datacount<datacount) {
+						client.datacount=datacount;
+						client.data=packet;
+						client.datavalid=true;
+						PlayfieldHistory history;
+						client.history.push_front(history);
+						if (client.history.size() > 100)
+							client.history.pop_back();
+						extractor.extract(client.history.front());
+					}
+		break;
 	}
 }
 
@@ -453,9 +457,9 @@ void Connections::manageClients() {
 					client.authresult=0;
 				}
 			}
-		if (client.incLines>1) {
+		if (client.incLines>=1) {
 			sf::Uint8 amount=0;
-			while (client.incLines>1) {
+			while (client.incLines>=1) {
 				amount++;
 				client.incLines-=1.0f;
 			}
@@ -657,6 +661,7 @@ void Room::startGame() {
 		client->garbageCleared=0;
 		client->incLines=0;
 		client->linesAdjusted=0;
+		client->history.clear();
 		if (!client->away) {
 			client->s_gamesPlayed++;
 			client->s_totalGames++;

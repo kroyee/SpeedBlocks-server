@@ -3,6 +3,7 @@
 #include <SFML/Network.hpp>
 #include <list>
 #include <thread>
+#include "PacketCompress.h"
 
 class Room;
 class Connections;
@@ -12,6 +13,11 @@ class Adjust {
 public:
 	short players;
 	short amount;
+};
+
+class PlayfieldHistory {
+public:
+	sf::Uint8 square[22][10];
 };
 
 class Client {
@@ -45,6 +51,7 @@ public:
 
 	sf::Time uploadTime;
 
+	std::list<PlayfieldHistory> history;
 
 	void sendData();
 	void getData();
@@ -138,6 +145,8 @@ public:
 	sf::Uint8 clientCount;
 
 	Lobby lobby;
+
+	PacketCompress extractor;
 
 	bool setUpListener();
 	bool listen();
