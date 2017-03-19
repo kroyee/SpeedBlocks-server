@@ -4,12 +4,18 @@ Just like the client, it requires SFML to run. The only needed modules are sfml-
 I have set up a temporary server on my laptop at home, it's on: 83.254.154.180
 You can try and connect there, or experiment yourself as you wish.
 
+### NOTES REGARDING THE CLIENT ###
+I added an EditBox in the main menu to enter an IP address to connect to on the Client!
+Grab the latest version there for easier changing, otherwise you need to change the serverAdd variable manually
+in network.h
+##################################
+
 There are only 2 rooms set up. You can join, leave, chat and go away.
 The score screen has the information it needs, but it looks worse then awful at the moment.
 
 Only guest connections atm, as the free webhost I was using for the forum just got worse and worse.
 
 There will have to be some adjustments to the combosystem for sure... but I figured I'll leave that
-until some more people are trying it out. Create and issue for it an everyone can voice an opinion.
+until some more people are trying it out. Create an issue for it an everyone can voice an opinion.
 
 I added some basic verification for incoming UDP packets for the clients, to prevent too much chaos. :)
