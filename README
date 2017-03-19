@@ -5,6 +5,7 @@ I have set up a temporary server on my laptop at home, it's on: 83.254.154.180
 You can try and connect there, or experiment yourself as you wish.
 
 ### NOTES REGARDING THE CLIENT ###
+Where? https://github.com/kroyee/SpeedBlocks
 I added an EditBox in the main menu to enter an IP address to connect to on the Client!
 Grab the latest version there for easier changing, otherwise you need to change the serverAdd variable manually
 in network.h
