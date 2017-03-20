@@ -853,6 +853,7 @@ void Lobby::addRoom(const sf::String& name, short max) {
 	rooms.back().id = idcount;
 	rooms.back().maxPlayers = max;
 	rooms.back().currentPlayers = 0;
+	rooms.back().activePlayers = 0;
 	rooms.back().countdownSetting = 3;
 	idcount++;
 	roomCount++;
