@@ -124,6 +124,10 @@ void Connections::sendWelcome() { //0-Packet
 	send(clients.back());
 }
 
+bool sortClient(Client* client1, Client* client2) {
+	return client1->score > client2->score;
+}
+
 void Connections::handle() {
 	packet >> id;
 	if (id < 100)
@@ -184,6 +188,7 @@ void Connections::handle() {
 				sf::Uint8 packetid = 9;
 				packet << packetid;
 				sender->guest=true;
+				sender->s_rank=25;
 				packetid=2;
 				packet << packetid;
 				send(*sender);
@@ -208,10 +213,11 @@ void Connections::handle() {
 			packet.clear(); // 8-Packet
 			sf::Uint8 packetid = 8;
 			packet << packetid << sender->room->currentPlayers;
+			sender->room->clients.sort(&sortClient);
 			for (auto&& client : sender->room->clients) {
 				packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
 				packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
-				packet << client->score;
+				packet << client->score << client->linesAdjusted;
 			}
 			sender->room->updatePlayerScore();
 			sender->s_gamesWon++;
@@ -310,6 +316,14 @@ void Connections::handle() {
 						break;
 					}
 			}
+		}
+		break;
+		case 99: //Bug report
+		{
+			sf::String happened, expected, reproduce, contact;
+			packet >> happened >> expected >> reproduce >> contact;
+			std::cout << happened.toAnsiString() << "\n\n" << expected.toAnsiString() << "\n\n" << reproduce.toAnsiString()
+			<< "\n\n" << contact.toAnsiString() << std::endl;
 		}
 		break;
 		case 100:

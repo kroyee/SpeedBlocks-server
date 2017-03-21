@@ -3,6 +3,7 @@
 #include <SFML/Network.hpp>
 #include <list>
 #include <thread>
+#include <iostream>
 #include "PacketCompress.h"
 
 class Room;
