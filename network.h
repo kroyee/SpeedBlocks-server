@@ -84,7 +84,7 @@ public:
 	bool active;
 	short countdownSetting;
 	short countdown;
-	bool round;
+	bool round, endround;
 	sf::Time countdownTime, roundLenght;
 	sf::Uint8 playersAlive;
 

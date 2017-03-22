@@ -89,7 +89,7 @@ void Connections::send(Room& room) {
 }
 
 void Connections::send(Room& room, short type) {
-	if (type == 1) {
+	if (type == 1) { //Send package to everyone who is not away
 		for (auto&& it : room.clients) {
 			if (!it->away) {
 				status = it->socket.send(packet);
@@ -100,7 +100,7 @@ void Connections::send(Room& room, short type) {
 	}
 	else if (type == 2) {
 		for (auto&& it : room.clients) {
-			if (it->away) {
+			if (it->away) { //Send package to everyone who is away
 				status = it->socket.send(packet);
 				if (status != sf::Socket::Done)
 					std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
@@ -281,8 +281,11 @@ void Connections::handle() {
 		break;
 		case 9: //Player came back
 			if (sender->away)
-				if (sender->room != nullptr)
+				if (sender->room != nullptr) {
 					sender->room->activePlayers++;
+					if (sender->room->activePlayers == 2)
+						sender->room->endround=true;
+				}
 			sender->away=false;
 		break;
 		case 10:
@@ -394,24 +397,21 @@ void Connections::manageRooms() {
 								send(*fromClient, *toClient);
 						fromClient->datavalid=false;
 					}
-				if (it.playersAlive==1 && it.activePlayers + it.leavers.size() > 1) {
+				if (it.endround) {
 					packet.clear();
 					sf::Uint8 packetid = 7; // 7-Packet
 					packet << packetid;
+					bool nowinner=true;
 					for (auto&& winner : it.clients)
 						if (winner->alive) {
 							winner->position=1;
 							send(*winner);
+							nowinner=false;
 							break;
 						}
+					if (nowinner)
+						send(it);
 					it.scoreRound();
-					it.endRound();
-				}
-				else if (it.playersAlive<1) {
-					packet.clear();
-					sf::Uint8 packetid = 7; // 7-Packet
-					packet << packetid;
-					send(it);
 					it.endRound();
 				}
 			}
@@ -666,6 +666,7 @@ void Room::startGame() {
 	transfearScore();
 	leavers.clear();
 	adjust.clear();
+	endround=false;
 	for (auto&& client : clients) {
 		client->datavalid=false;
 		client->datacount=250;
@@ -734,7 +735,7 @@ void Room::join(Client& jClient) {
 		currentPlayers++;
 		activePlayers++;
 		if (activePlayers == 2)
-			endRound();
+			endround=true;
 		clients.push_back(&jClient);
 		active=true;
 		jClient.room = this;
@@ -858,6 +859,8 @@ void Room::playerDied() {
 	playersAlive--;
 	adj.players=playersAlive;
 	adjust.push_back(adj);
+	if (playersAlive < 2)
+		endround=true;
 }
 
 void Lobby::addRoom(const sf::String& name, short max) {
