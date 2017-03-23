@@ -274,9 +274,21 @@ void Connections::handle() {
 		break;
 		case 8: //Player went away
 			if (sender->room != nullptr) {
-				sender->away=true;
-				if (!sender->room->round)
+				if (sender->away == false) {
+					if (sender->alive) {
+						sender->position = sender->room->playersAlive;
+						sender->room->playersAlive--;
+					}
 					sender->room->activePlayers--;
+					if (sender->room->activePlayers == 1)
+						sender->room->endround=true;
+					else if (sender->room->activePlayers == 0) {
+						sender->room->active=false;
+						sender->room->round=false;
+						sender->room->countdown=0;
+					}
+				}
+				sender->away=true;
 			}
 		break;
 		case 9: //Player came back
@@ -285,6 +297,8 @@ void Connections::handle() {
 					sender->room->activePlayers++;
 					if (sender->room->activePlayers == 2)
 						sender->room->endround=true;
+					else if (sender->room->activePlayers == 1)
+						sender->room->active=true;
 				}
 			sender->away=false;
 		break;
