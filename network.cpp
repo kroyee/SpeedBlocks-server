@@ -2,6 +2,7 @@
 #include <SFML/Network.hpp>
 #include <iostream>
 #include <thread>
+#include "MingConverter.h"
 
 bool Connections::setUpListener() {
 	if (listener.listen(tcpPort) == sf::Socket::Done) {
