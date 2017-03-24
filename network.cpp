@@ -185,15 +185,18 @@ void Connections::handle() {
 				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
 			}
 			else if (guest) {
-				packet.clear(); //9-Packet nr1
+				packet.clear(); //9-Packet nr2
 				sf::Uint8 packetid = 9;
 				packet << packetid;
 				sender->guest=true;
 				sender->s_rank=25;
 				packetid=2;
+				for (auto&& client : clients) // Checking for duplicate names, and sending back 4 if found
+					if (client.id != sender->id && client.name == sender->name)
+						packetid=4;
 				packet << packetid;
 				send(*sender);
-				std::cout << "Guest confirmed" << std::endl;
+				std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 			}
 			else
 				sender->thread = std::thread(&Client::authUser, sender);
