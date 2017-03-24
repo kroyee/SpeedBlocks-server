@@ -64,7 +64,7 @@ public:
 
 class Room {
 public:
-	Room(Connections* _conn) : active(false), round(false), conn(_conn), hero(false) {}
+	Room(Connections* _conn) : conn(_conn), active(false), round(false), hero(false) {}
 	Connections* conn;
 	sf::String name;
 	sf::Uint16 id;
@@ -102,7 +102,7 @@ public:
 
 class Lobby {
 public:
-	Lobby(Connections* _conn) : conn(_conn), idcount(0), roomCount(0) {}
+	Lobby(Connections* _conn) : conn(_conn), roomCount(0), idcount(0) {}
 	Connections* conn;
 	sf::String welcomeMsg;
 

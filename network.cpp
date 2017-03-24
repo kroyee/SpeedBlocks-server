@@ -368,7 +368,7 @@ void Connections::handle() {
 
 void Connections::manageRooms() {
 	for (auto&& it : lobby.rooms) {
-		if (it.active)
+		if (it.active) {
 			if (!it.round) {
 				if (it.countdown) {
 					if (it.start.getElapsedTime() > sf::seconds(1)) { //2-Packet 
@@ -429,6 +429,7 @@ void Connections::manageRooms() {
 					it.endRound();
 				}
 			}
+		}
 	}
 }
 
@@ -533,8 +534,6 @@ void Client::authUser() {
     sf::Http http("http://speedblocks.esy.es");
     sf::Http::Response response = http.sendRequest(request);
 
-    bool success=false;
-
     if (response.getStatus() == sf::Http::Response::Ok) {
         if (response.getBody() != "Failed") {
         	authpass = response.getBody();
@@ -559,7 +558,7 @@ void Client::sendData() {
 	sf::Http::Request request("/speedblocks/add.php", sf::Http::Request::Post);
 
 	sf::String tmp = std::to_string(s_avgBpm);
-	short c = tmp.find('.');
+	unsigned short c = tmp.find('.');
 	if (c != sf::String::InvalidPos)
 		tmp = tmp.substring(0,c+3);
 
@@ -606,15 +605,15 @@ void Client::getData() {
 	    	std::cout << data << std::endl;
 	    	short c2;
 	    	short c = data.find('%');
-	    	s_avgBpm = getDataFloat(c2,c,data);
+	    	s_avgBpm = getDataFloat(0,c,data);
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_gamesPlayed = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_gamesWon = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
-	    	s_heropoints = getDataInt(0,c,data);
+	    	s_heropoints = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
-	    	s_herorank = getDataInt(0,c,data);
+	    	s_herorank = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_maxBpm = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
@@ -703,7 +702,7 @@ void Room::transfearScore() {
 	for (auto&& leaver : leavers) {
 		for (auto&& client : conn->clients)
 			if (leaver.id == client.id) {
-				client.s_points + leaver.s_points;
+				client.s_points += leaver.s_points;
 				if (client.s_points>1000) {
 					client.s_points=0;
 					client.s_rank--;
@@ -715,7 +714,7 @@ void Room::transfearScore() {
 			}
 		for (auto&& client : conn->uploadData)
 			if (leaver.id == client.id) {
-				client.s_points + leaver.s_points;
+				client.s_points += leaver.s_points;
 				if (client.s_points>1000) {
 					client.s_points=0;
 					client.s_rank--;
@@ -823,8 +822,8 @@ void Room::scoreRound() {
 
 	std::cout << "Scoring: " << playersinround << " players, avg rank: " << avgrank << std::endl;
 
-	float pointcoff[playersinround];
-	Client* inround[playersinround];
+	float* pointcoff = new float[playersinround];
+	Client** inround = new Client*[playersinround];
 
 	short lookingfor=0, position=1;
 	while (lookingfor<playersinround) {
@@ -862,6 +861,9 @@ void Room::scoreRound() {
 
 		std::cout << (int)inround[i]->id << ": " << pointcoff[i] << " -> " << (int)inround[i]->s_points << " & " << (int)inround[i]->s_rank << std::endl;
 	}
+
+	delete[] pointcoff;
+	delete[] inround;
 }
 
 void Room::playerDied() {
