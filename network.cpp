@@ -376,6 +376,14 @@ void Connections::handle() {
 void Connections::manageRooms() {
 	for (auto&& it : lobby.rooms) {
 		if (it.active) {
+			for (auto&& fromClient : it.clients) {
+				if (fromClient->datavalid) {
+					for (auto&& toClient : it.clients)
+						if (fromClient->id != toClient->id)
+							send(*fromClient, *toClient);
+					fromClient->datavalid=false;
+				}
+			}
 			if (!it.round) {
 				if (it.countdown) {
 					if (it.start.getElapsedTime() > sf::seconds(1)) { //2-Packet 
@@ -410,13 +418,6 @@ void Connections::manageRooms() {
 				}
 			}
 			else {
-				for (auto&& fromClient : it.clients)
-					if (fromClient->datavalid) {
-						for (auto&& toClient : it.clients)
-							if (fromClient->id != toClient->id)
-								send(*fromClient, *toClient);
-						fromClient->datavalid=false;
-					}
 				if (it.endround) {
 					bool nowinner=true;
 					packet.clear();
@@ -771,6 +772,7 @@ void Room::join(Client& jClient) {
 		jClient.alive=false; jClient.maxCombo=0; jClient.position=0; jClient.linesSent=0; jClient.linesReceived=0;
 		jClient.linesBlocked=0; jClient.bpm=0; jClient.spm=0; jClient.datavalid=false; jClient.score=0; jClient.incLines=0;
 		jClient.away=false;
+		jClient.datacount=250;
 		std::cout << jClient.id << " joined room " << id << std::endl;
 	}
 }
