@@ -223,13 +223,18 @@ void Connections::handle() {
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
 			packet.clear(); // 8-Packet
-			sf::Uint8 packetid = 8;
-			packet << packetid << sender->room->currentPlayers;
+			sf::Uint8 packetid = 8, count=0;
+			for (auto&& client : sender->room->clients)
+				if (client->position)
+					count++;
+			packet << packetid << count;
 			sender->room->clients.sort(&sortClient);
 			for (auto&& client : sender->room->clients) {
-				packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
-				packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
-				packet << client->score << client->linesAdjusted;
+				if (client->position) {
+					packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
+					packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
+					packet << client->score << client->linesAdjusted;
+				}
 			}
 			sender->room->updatePlayerScore();
 			sender->s_gamesWon++;
@@ -761,7 +766,7 @@ void Room::endRound() { //6-Packet
 
 void Room::join(Client& jClient) {
 	if (currentPlayers<maxPlayers) {
-		if (!currentPlayers)
+		if (!activePlayers)
 			countdown=0;
 		currentPlayers++;
 		activePlayers++;
