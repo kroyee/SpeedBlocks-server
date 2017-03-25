@@ -87,6 +87,7 @@ public:
 	bool round, endround;
 	sf::Time countdownTime, roundLenght;
 	sf::Uint8 playersAlive;
+	sf::Uint16 seed1, seed2;
 
 	bool hero;
 

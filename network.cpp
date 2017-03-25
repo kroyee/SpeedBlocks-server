@@ -144,7 +144,7 @@ void Connections::handle() {
 						packet.clear();
 						sf::Uint8 packetid = 3;
 						sf::Uint8 joinok = 1;
-						packet << packetid << joinok << it.currentPlayers;
+						packet << packetid << joinok << it.seed1 << it.seed2 << it.currentPlayers;
 						for (auto&& inroom : it.clients)
 							packet << inroom->id << inroom->name;
 						send(*sender);
@@ -204,11 +204,18 @@ void Connections::handle() {
 		}
 		break;
 		case 3: //Player died and sending round-data
+		{
 			sender->alive=false;
 			sender->position=sender->room->playersAlive;
 			sender->room->playerDied();
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
+
+			packet.clear(); //15-Packet
+			sf::Uint8 packetid = 15;
+			packet << packetid << sender->id << sender->position;
+			send(*sender->room);
+		}
 		break;
 		case 4: //Player won and sending round-data
 		{
@@ -279,23 +286,22 @@ void Connections::handle() {
 		case 8: //Player went away
 			if (sender->room != nullptr) {
 				if (sender->away == false) {
-					if (sender->alive) {
-						sender->position = sender->room->playersAlive;
-						sender->room->playersAlive--;
-					}
 					sender->room->activePlayers--;
-					if (sender->room->activePlayers == 1)
-						sender->room->endround=true;
-					else if (sender->room->activePlayers == 0) {
+					if (sender->room->activePlayers == 0) {
 						sender->room->active=false;
 						sender->room->round=false;
 						sender->room->countdown=0;
 					}
 				}
 				sender->away=true;
+				packet.clear(); //13-Packet
+				sf::Uint8 packetid = 13;
+				packet << packetid << sender->id;
+				send(*sender->room);
 			}
 		break;
 		case 9: //Player came back
+		{
 			if (sender->away)
 				if (sender->room != nullptr) {
 					sender->room->activePlayers++;
@@ -305,8 +311,13 @@ void Connections::handle() {
 						sender->room->active=true;
 				}
 			sender->away=false;
+			packet.clear(); //14-Packet
+			sf::Uint8 packetid = 14;
+			packet << packetid << sender->id;
+			send(*sender->room);
+		}
 		break;
-		case 10:
+		case 10: // Chat msg
 		{
 			sf::Uint8 type, packetid = 12; //12-Packet
 			sf::String to, msg;
@@ -339,15 +350,7 @@ void Connections::handle() {
 			}
 		}
 		break;
-		case 99: //Bug report
-		{
-			sf::String happened, expected, reproduce, contact;
-			packet >> happened >> expected >> reproduce >> contact;
-			std::cout << happened.toAnsiString() << "\n\n" << expected.toAnsiString() << "\n\n" << reproduce.toAnsiString()
-			<< "\n\n" << contact.toAnsiString() << std::endl;
-		}
-		break;
-		case 100:
+		case 100: // UDP packet with gamestate
 			sf::Uint16 dataid;
 			sf::Uint8 datacount;
 
@@ -396,39 +399,47 @@ void Connections::manageRooms() {
 					packet << packetid;
 					packetid = it.countdown;
 					packet << packetid;
-					sf::Uint16 seed = rand();
-					packet << seed;
-					seed = rand();
-					packet << seed;
+					it.seed1 = rand();
+					it.seed2 = rand();
+					packet << it.seed1 << it.seed2;
 					send(it, 1);
 					packet.clear(); //11-Packet
 					packetid = 11;
-					packet << packetid;
+					packet << packetid << it.seed1 << it.seed2;
 					send(it, 2);
 				}
 			}
 			else {
 				for (auto&& fromClient : it.clients)
-					if (fromClient->alive && fromClient->datavalid) {
+					if (fromClient->datavalid) {
 						for (auto&& toClient : it.clients)
 							if (fromClient->id != toClient->id)
 								send(*fromClient, *toClient);
 						fromClient->datavalid=false;
 					}
 				if (it.endround) {
+					bool nowinner=true;
 					packet.clear();
 					sf::Uint8 packetid = 7; // 7-Packet
 					packet << packetid;
-					bool nowinner=true;
 					for (auto&& winner : it.clients)
 						if (winner->alive) {
 							winner->position=1;
 							send(*winner);
 							nowinner=false;
+
+							packet.clear(); // 15-Packet
+							packetid = 15;
+							packet << packetid << winner->id << winner->position;
+							send(it);
 							break;
 						}
-					if (nowinner)
+					if (nowinner) {
+						packet.clear();
+						packetid = 7;
+						packet << packetid;
 						send(it);
+					}
 					it.scoreRound();
 					it.endRound();
 				}
@@ -684,6 +695,7 @@ void Room::startGame() {
 	leavers.clear();
 	adjust.clear();
 	endround=false;
+	countdown=false;
 	for (auto&& client : clients) {
 		client->datavalid=false;
 		client->datacount=250;
