@@ -7,6 +7,8 @@ std::string to_string(int);
 short stoi(std::string);
 float stof(std::string);
 #endif
+#else
+using std::to_string;
 #endif
 
 #endif

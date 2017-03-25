@@ -2,6 +2,7 @@
 #include <SFML/Network.hpp>
 #include <iostream>
 #include <thread>
+#include <string>
 #include "MingwConvert.h"
 
 bool Connections::setUpListener() {
@@ -471,7 +472,7 @@ void Connections::manageClients() {
 					packet << packetid;
 					packetid=1;
 					std::cout << "Client: " << client.id << " -> ";
-					client.id = std::stoi(client.authpass.toAnsiString());
+					client.id = stoi(client.authpass.toAnsiString());
 					std::cout << client.id << std::endl;
 					packet << packetid << client.name << client.id;
 					send(client);
@@ -573,16 +574,16 @@ void Client::authUser() {
 void Client::sendData() {
 	sf::Http::Request request("/speedblocks/add.php", sf::Http::Request::Post);
 
-	sf::String tmp = std::to_string(s_avgBpm);
+	sf::String tmp = to_string(s_avgBpm);
 	unsigned short c = tmp.find('.');
 	if (c != sf::String::InvalidPos)
 		tmp = tmp.substring(0,c+3);
 
-    sf::String stream = "id="+std::to_string(id)+"&maxcombo="+std::to_string(s_maxCombo)+"&maxbpm="+std::to_string(s_maxBpm);
-    stream += "&gamesplayed="+std::to_string(s_gamesPlayed)+"&avgbpm="+tmp;
-    stream += "&gameswon="+std::to_string(s_gamesWon)+"&rank="+std::to_string(s_rank)+"&points="+std::to_string(s_points);
-    stream += "&heropoints="+std::to_string(s_heropoints)+"&totalbpm="+std::to_string(s_totalBpm);
-    stream += "&totalgamesplayed="+std::to_string(s_totalGames)+"&herorank="+std::to_string(s_herorank);
+    sf::String stream = "id="+to_string(id)+"&maxcombo="+to_string(s_maxCombo)+"&maxbpm="+to_string(s_maxBpm);
+    stream += "&gamesplayed="+to_string(s_gamesPlayed)+"&avgbpm="+tmp;
+    stream += "&gameswon="+to_string(s_gamesWon)+"&rank="+to_string(s_rank)+"&points="+to_string(s_points);
+    stream += "&heropoints="+to_string(s_heropoints)+"&totalbpm="+to_string(s_totalBpm);
+    stream += "&totalgamesplayed="+to_string(s_totalGames)+"&herorank="+to_string(s_herorank);
     request.setBody(stream);
 
     sf::Http http("http://speedblocks.esy.es");
@@ -602,7 +603,7 @@ void Client::getData() {
 	std::cout << "Getting data for " << (int)id << std::endl;
 	sf::Http::Request request("/speedblocks/get.php", sf::Http::Request::Post);
 
-    sf::String stream = "id=" + std::to_string(id);
+    sf::String stream = "id=" + to_string(id);
     request.setBody(stream);
 
     sf::Http http("http://speedblocks.esy.es");
