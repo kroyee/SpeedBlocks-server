@@ -4,6 +4,8 @@
 #include <thread>
 #include <string>
 #include "MingwConvert.h"
+using std::cout;
+using std::endl;
 
 bool Connections::setUpListener() {
 	if (listener.listen(tcpPort) == sf::Socket::Done) {
@@ -141,7 +143,7 @@ void Connections::handle() {
 			packet >> roomid;
 			for (auto&& it : lobby.rooms) //3-Packet
 				if (it.id == roomid) {
-					if (it.currentPlayers < it.maxPlayers && (sender->sdataInit || sender->guest)) {
+					if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (sender->sdataInit || sender->guest)) {
 						packet.clear();
 						sf::Uint8 packetid = 3;
 						sf::Uint8 joinok = 1;
@@ -356,6 +358,14 @@ void Connections::handle() {
 			}
 		}
 		break;
+		case 11:
+		{
+			sf::String name;
+			sf::Uint8 max;
+			packet >> name >> max;
+			lobby.addRoom(name, max);
+		}
+		break;
 		case 100: // UDP packet with gamestate
 			sf::Uint16 dataid;
 			sf::Uint8 datacount;
@@ -453,6 +463,7 @@ void Connections::manageRooms() {
 			}
 		}
 	}
+	lobby.removeIdleRooms();
 }
 
 void Connections::manageClients() {
@@ -765,7 +776,7 @@ void Room::endRound() { //6-Packet
 }
 
 void Room::join(Client& jClient) {
-	if (currentPlayers<maxPlayers) {
+	if (currentPlayers<maxPlayers || maxPlayers == 0) {
 		if (!activePlayers)
 			countdown=0;
 		currentPlayers++;
@@ -890,6 +901,12 @@ void Room::scoreRound() {
 	delete[] inround;
 }
 
+float eloExpected(float pointsA, float pointsB) { //Gives A's ExpectedPoints
+	return 1.0 / (1.0 + pow(10.0, (pointsB - pointsA) / 400.0));
+}
+
+// Rnew = Rold + K * (ActualPoints - ExpectedPoints)
+
 void Room::playerDied() {
 	Adjust adj;
 	adj.amount=0;
@@ -903,6 +920,16 @@ void Room::playerDied() {
 		endround=true;
 }
 
+void Lobby::sendRoomList(Client& client) {
+	conn->packet.clear();
+	sf::Uint8 packetid = 16; //16-Packet
+	conn->packet << packetid << roomCount;
+	for (auto&& room : rooms) {
+		conn->packet << room.id << room.name << room.currentPlayers << room.maxPlayers;
+	}
+	conn->send(client);
+}
+
 void Lobby::addRoom(const sf::String& name, short max) {
 	Room newroom(conn);
 	rooms.push_back(newroom);
@@ -912,18 +939,32 @@ void Lobby::addRoom(const sf::String& name, short max) {
 	rooms.back().currentPlayers = 0;
 	rooms.back().activePlayers = 0;
 	rooms.back().countdownSetting = 3;
+	cout << "Adding room " << rooms.back().name.toAnsiString() << " as " << rooms.back().id << endl;
 	idcount++;
 	roomCount++;
 	if (idcount<10)
 		idcount=10;
+
+	sf::Uint8 packetid = 17; //17-Packet
+	conn->packet.clear();
+	conn->packet << packetid << rooms.back().id << name << 1 << rooms.back().maxPlayers;
+	for (auto&& client : conn->clients)
+		conn->send(client);
 }
 
-void Lobby::removeRoom(sf::Uint16 id) {
+void Lobby::removeIdleRooms() {
+	sf::Uint16 id;
 	for (auto it = rooms.begin(); it != rooms.end(); it++)
-		if (it->id == id) {
+		if (it->currentPlayers == 0 && it->start.getElapsedTime() > sf::seconds(60) && it->id > 9) {
+			cout << "Removing room " << it->name.toAnsiString() << " as " << it->id << endl;
+			id = it->id;
 			it = rooms.erase(it);
 			roomCount--;
-			break;
+			sf::Uint8 packetid = 18; //18-Packet
+			conn->packet.clear();
+			conn->packet << packetid << id;
+			for (auto&& client : conn->clients)
+				conn->send(client);
 		}
 }
 

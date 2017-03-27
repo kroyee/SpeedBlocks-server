@@ -4,6 +4,7 @@
 #include "network.h"
 
 bool quit=false;
+bool status=false;
 
 void getInput() {
 	std::string s;
@@ -11,6 +12,8 @@ void getInput() {
 		std::cin >> s;
 		if (s == "quit")
 			quit=true;
+		else if (s == "status")
+			status=true;
 	}
 }
 
@@ -33,15 +36,15 @@ int main() {
 
 	srand(time(NULL));
 
-	std::thread t(&getInput);
-
 	Connections conn;
 	if (!conn.setUpListener())
 		return 1;
 
+	std::thread t(&getInput);
+
 	std::cout << "Listener set up" << std::endl;
 
-	conn.lobby.addRoom("Standard", 10);
+	conn.lobby.addRoom("Standard", 0);
 	conn.lobby.idcount=1;
 	conn.lobby.addRoom("Fast and Furious", 5);
 
@@ -54,6 +57,15 @@ int main() {
 
 		conn.manageRooms();
 		conn.manageClients();
+		if (status) {
+			for (auto&& client : conn.clients) {
+				std::cout << client.id << ": " << client.name.toAnsiString();
+				if (client.room != nullptr)
+					std::cout << " in room " << client.room->name.toAnsiString();
+				std::cout << std::endl;
+			}
+			status=false;
+		}
 	}
 
 	for (auto&& it : conn.clients) {

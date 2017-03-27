@@ -112,8 +112,9 @@ public:
 	sf::Uint16 idcount;
 
 	void addRoom(const sf::String& name, short);
-	void removeRoom(sf::Uint16 id);
+	void removeIdleRooms();
 	void setMsg(const sf::String& msg);
+	void sendRoomList(Client&);
 };
 
 class Connections {
