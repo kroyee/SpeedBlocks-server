@@ -141,11 +141,17 @@ void Connections::handle() {
 		{
 			sf::Uint16 roomid;
 			packet >> roomid;
-			for (auto&& it : lobby.rooms) //3-Packet
+			for (auto&& it : lobby.rooms)
 				if (it.id == roomid) {
+					bool alreadyin=false;
+					for (auto&& client : it.clients) //Make sure the client is not already in the room
+						if (client->id == sender->id)
+							alreadyin=true;
+					if (alreadyin)
+						break;
 					if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (sender->sdataInit || sender->guest)) {
 						packet.clear();
-						sf::Uint8 packetid = 3;
+						sf::Uint8 packetid = 3; //3-Packet
 						sf::Uint8 joinok = 1;
 						packet << packetid << joinok << it.seed1 << it.seed2 << it.currentPlayers;
 						for (auto&& inroom : it.clients)
