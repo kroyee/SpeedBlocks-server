@@ -589,7 +589,7 @@ void Client::authUser() {
     }
     else {
         std::cout << "Request failed" << std::endl;
-        authresult=3;
+        authresult=2; // Set this to 3 to revert to resending request if the request failed
     }
 }
 
