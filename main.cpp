@@ -1,7 +1,7 @@
 #include <iostream>
 #include <SFML/Network.hpp>
 #include <thread>
-#include "network.h"
+#include "Connections.h"
 
 bool quit=false;
 bool status=false;
@@ -44,9 +44,9 @@ int main() {
 
 	std::cout << "Listener set up" << std::endl;
 
-	conn.lobby.addRoom("Standard", 0);
+	conn.lobby.addRoom("Standard", 0, 1);
 	conn.lobby.idcount=1;
-	conn.lobby.addRoom("Fast and Furious", 5);
+	conn.lobby.addRoom("Fast and Furious", 5, 3);
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
 

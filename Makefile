@@ -1,13 +1,22 @@
 default: server
 
-server: main.o network.o PacketCompress.o MingwConvert.o
-	g++ -std=c++11 -Wall -Wextra -pedantic -pthread main.o network.o PacketCompress.o MingwConvert.o -o server -lsfml-network -lsfml-system
+server: main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o
+	g++ -std=c++11 -Wall -Wextra -pedantic -pthread main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o -o server -lsfml-network -lsfml-system
 
-main.o: main.cpp network.h
+main.o: main.cpp Connections.h Lobby.h Room.h Client.h
 	g++ -std=c++11 -Wall -Wextra -pedantic -c main.cpp -o main.o
 
-network.o: network.cpp network.h
-	g++ -std=c++11 -Wall -Wextra -pedantic -c network.cpp -o network.o
+Connections.o: Connections.cpp Connections.h Lobby.h Room.h Client.h
+	g++ -std=c++11 -Wall -Wextra -pedantic -c Connections.cpp -o Connections.o
+
+Lobby.o: Lobby.cpp Lobby.h Room.h Client.h
+	g++ -std=c++11 -Wall -Wextra -pedantic -c Lobby.cpp -o Lobby.o
+
+Room.o: Room.cpp Room.h Client.h
+	g++ -std=c++11 -Wall -Wextra -pedantic -c Room.cpp -o Room.o
+
+Client.o: Client.cpp Client.h
+	g++ -std=c++11 -Wall -Wextra -pedantic -c Client.cpp -o Client.o
 
 PacketCompress.o: PacketCompress.h PacketCompress.cpp
 	g++ -std=c++11 -Wall -Wextra -pedantic -c PacketCompress.cpp -o PacketCompress.o
