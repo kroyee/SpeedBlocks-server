@@ -22,7 +22,7 @@ bool Connections::listen() {
 
 bool Connections::receive() {
 	if (selector.isReady(listener)) {
-		Client newclient;
+		Client newclient(this);
 		clients.push_back(newclient);
 		clients.back().id = idcount;
 		idcount++;
@@ -129,7 +129,7 @@ bool sortClient(Client* client1, Client* client2) {
 	return client1->score > client2->score;
 }
 
-void Connections::handle() {
+void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
 		std::cout << "Packet id: " << (int)id << std::endl;
@@ -298,11 +298,8 @@ void Connections::handle() {
 			if (sender->room != nullptr) {
 				if (sender->away == false) {
 					sender->room->activePlayers--;
-					if (sender->room->activePlayers == 0) {
-						sender->room->active=false;
-						sender->room->round=false;
-						sender->room->countdown=0;
-					}
+					if (sender->room->activePlayers == 0)
+						sender->room->setInactive();
 				}
 				sender->away=true;
 				packet.clear(); //13-Packet
@@ -318,8 +315,7 @@ void Connections::handle() {
 					sender->room->activePlayers++;
 					if (sender->room->activePlayers == 2)
 						sender->room->endround=true;
-					else if (sender->room->activePlayers == 1)
-						sender->room->active=true;
+					sender->room->setActive();
 				}
 			sender->away=false;
 			packet.clear(); //14-Packet
@@ -395,76 +391,9 @@ void Connections::handle() {
 void Connections::manageRooms() {
 	for (auto&& it : lobby.rooms) {
 		if (it.active) {
-			for (auto&& fromClient : it.clients) {
-				if (fromClient->datavalid) {
-					for (auto&& toClient : it.clients)
-						if (fromClient->id != toClient->id)
-							send(*fromClient, *toClient);
-					fromClient->datavalid=false;
-				}
-			}
-			if (!it.round) {
-				if (it.countdown) {
-					if (it.start.getElapsedTime() > sf::seconds(1)) { //2-Packet 
-						it.countdown--;
-						it.start.restart();
-						packet.clear();
-						sf::Uint8 packetid = 2;
-						packet << packetid;
-						packetid = it.countdown;
-						packet << packetid;
-						send(it, 1);
-						if (it.countdown == 0)
-							it.startGame();
-					}
-				}
-				else if (it.start.getElapsedTime() > sf::seconds(3)) { //1-Packet
-					it.countdown=it.countdownSetting;
-					it.start.restart();
-					packet.clear();
-					sf::Uint8 packetid = 1;
-					packet << packetid;
-					packetid = it.countdown;
-					packet << packetid;
-					it.seed1 = rand();
-					it.seed2 = rand();
-					packet << it.seed1 << it.seed2;
-					send(it, 1);
-					packet.clear(); //11-Packet
-					packetid = 11;
-					packet << packetid << it.seed1 << it.seed2;
-					send(it, 2);
-				}
-			}
-			else {
-				if (it.endround) {
-					bool nowinner=true;
-					packet.clear();
-					sf::Uint8 packetid = 7; // 7-Packet
-					packet << packetid;
-					for (auto&& winner : it.clients)
-						if (winner->alive) {
-							winner->position=1;
-							send(*winner);
-							nowinner=false;
-
-							packet.clear(); // 15-Packet
-							packetid = 15;
-							packet << packetid << winner->id << winner->position;
-							send(it);
-							break;
-						}
-					if (nowinner) {
-						packet.clear();
-						packetid = 7;
-						packet << packetid;
-						send(it);
-					}
-					if (it.gamemode == 1)
-						it.scoreFFARound();
-					it.endRound();
-				}
-			}
+			it.sendGameData();
+			it.makeCountdown();
+			it.checkIfRoundEnded();
 		}
 	}
 	lobby.removeIdleRooms();
@@ -472,70 +401,15 @@ void Connections::manageRooms() {
 
 void Connections::manageClients() {
 	for (auto&& client : clients) {
-		if (client.sdataSet)
-			if (client.thread.joinable()) {
-				client.thread.join();
-				client.sdataSet=false;
-			}
-		if (client.sdataSetFailed)
-			if (client.thread.joinable()) {
-				client.thread.join();
-				client.sdataSetFailed=false;
-				client.thread = std::thread(&Client::getData, &client);
-			}
-		if (client.authresult)
-			if (client.thread.joinable()) {
-				client.thread.join();
-				sf::Uint8 packetid = 9;
-				if (client.authresult==1) { //9-Packet nr2
-					packet.clear();
-					packet << packetid;
-					packetid=1;
-					std::cout << "Client: " << client.id << " -> ";
-					client.id = stoi(client.authpass.toAnsiString());
-					std::cout << client.id << std::endl;
-					packet << packetid << client.name << client.id;
-					send(client);
-					client.guest=false;
-					bool copyfound=false;
-					for (auto it = uploadData.begin(); it != uploadData.end(); it++)
-						if (it->id == client.id && !it->sdataPut) {
-							std::cout << "Getting data for " << client.id << " from uploadData" << std::endl;
-							client.copy(*it);
-							copyfound=true;
-							it = uploadData.erase(it);
-							break;
-						}
-					if (!copyfound)
-						client.thread = std::thread(&Client::getData, &client);
-					client.authresult=0;
-				}
-				else if (client.authresult==2) {
-					packet.clear();
-					packet << packetid;
-					packetid=0;
-					packet << packetid;
-					send(client);
-					client.authresult=0;
-				}
-				else {
-					client.thread = std::thread(&Client::authUser, &client);
-					client.authresult=0;
-				}
-			}
-		if (client.incLines>=1) {
-			sf::Uint8 amount=0;
-			while (client.incLines>=1) {
-				amount++;
-				client.incLines-=1.0f;
-			}
-			packet.clear(); // 10-Packet
-			sf::Uint8 packetid = 10;
-			packet << packetid << amount;
-			send(client);
-		}
+		client.checkIfStatsSet();
+		client.checkIfAuth();
+		client.sendLines();
 	}
 	
+	manageUploadData();
+}
+
+void Connections::manageUploadData() {
 	for (auto it = uploadData.begin(); it != uploadData.end(); it++) {
 		if (uploadClock.getElapsedTime() > it->uploadTime) {
 			it->sdataPut=true;

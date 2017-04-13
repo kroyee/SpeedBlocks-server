@@ -1,4 +1,5 @@
 #include "Client.h"
+#include "Connections.h"
 
 void Client::authUser() {
 	std::cout << "Authing user..." << std::endl;
@@ -134,6 +135,7 @@ void Client::copy(Client& client) {
 	s_gamesPlayed=client.s_gamesPlayed; s_gamesWon=client.s_gamesWon; s_totalGames=client.s_totalGames;
 	sdataInit=true;
 	away=false;
+	conn=client.conn;
 }
 
 Client::Client(const Client& client) {
@@ -147,4 +149,78 @@ Client::Client(const Client& client) {
 	s_points = client.s_points; s_heropoints = client.s_heropoints; s_herorank = client.s_herorank;
 	s_avgBpm = client.s_avgBpm; s_gamesPlayed = client.s_gamesPlayed; s_gamesWon = client.s_gamesWon;
 	s_totalGames = client.s_totalGames; s_totalBpm = client.s_totalBpm;
+
+	conn=client.conn;
+}
+
+void Client::checkIfStatsSet() {
+	if (sdataSet)
+		if (thread.joinable()) {
+			thread.join();
+			sdataSet=false;
+		}
+	if (sdataSetFailed)
+		if (thread.joinable()) {
+			thread.join();
+			sdataSetFailed=false;
+			thread = std::thread(&Client::getData, this);
+		}
+}
+
+void Client::checkIfAuth() {
+	if (authresult) {
+		if (thread.joinable()) {
+			thread.join();
+			sf::Uint8 packetid = 9;
+			if (authresult==1) { //9-Packet nr2
+				conn->packet.clear();
+				conn->packet << packetid;
+				packetid=1;
+				std::cout << "Client: " << id << " -> ";
+				id = stoi(authpass.toAnsiString());
+				std::cout << id << std::endl;
+				conn->packet << packetid << name << id;
+				conn->send(*this);
+				guest=false;
+				bool copyfound=false;
+				for (auto it = conn->uploadData.begin(); it != conn->uploadData.end(); it++)
+					if (it->id == id && !it->sdataPut) {
+						std::cout << "Getting data for " << id << " from uploadData" << std::endl;
+						copy(*it);
+						copyfound=true;
+						it = conn->uploadData.erase(it);
+						break;
+					}
+				if (!copyfound)
+					thread = std::thread(&Client::getData, this);
+				authresult=0;
+			}
+			else if (authresult==2) {
+				conn->packet.clear();
+				conn->packet << packetid;
+				packetid=0;
+				conn->packet << packetid;
+				conn->send(*this);
+				authresult=0;
+			}
+			else {
+				thread = std::thread(&Client::authUser, this);
+				authresult=0;
+			}
+		}
+	}
+}
+
+void Client::sendLines() {
+	if (incLines>=1) {
+		sf::Uint8 amount=0;
+		while (incLines>=1) {
+			amount++;
+			incLines-=1.0f;
+		}
+		conn->packet.clear(); // 10-Packet
+		sf::Uint8 packetid = 10;
+		conn->packet << packetid << amount;
+		conn->send(*this);
+	}
 }

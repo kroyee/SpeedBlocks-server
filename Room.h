@@ -49,6 +49,11 @@ public:
 	void transfearScore();
 	void updatePlayerScore();
 	void playerDied();
+	void setInactive();
+	void setActive();
+	void sendGameData();
+	void makeCountdown();
+	void checkIfRoundEnded();
 };
 
 #endif

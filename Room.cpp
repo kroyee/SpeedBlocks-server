@@ -79,7 +79,7 @@ void Room::join(Client& jClient) {
 		if (activePlayers == 2)
 			endround=true;
 		clients.push_back(&jClient);
-		active=true;
+		setActive();
 		jClient.room = this;
 		jClient.alive=false; jClient.maxCombo=0; jClient.position=0; jClient.linesSent=0; jClient.linesReceived=0;
 		jClient.linesBlocked=0; jClient.bpm=0; jClient.spm=0; jClient.datavalid=false; jClient.score=0; jClient.incLines=0;
@@ -104,11 +104,8 @@ void Room::leave(Client& lClient) {
 				leavers.back().s_points=0;
 			}
 			it = clients.erase(it);
-			if (activePlayers == 0) {
-				active=false;
-				round=false;
-				countdown=0;
-			}
+			if (activePlayers == 0)
+				setInactive();
 			lClient.incLines = 0;
 			lClient.room = nullptr;
 			std::cout << lClient.id << " left room " << id << std::endl;
@@ -215,4 +212,94 @@ void Room::playerDied() {
 	adjust.push_back(adj);
 	if (playersAlive < 2)
 		endround=true;
+}
+
+void Room::setInactive() {
+	active=false;
+	round=false;
+	countdown=0;
+	start.restart();
+}
+
+void Room::setActive() {
+	active=true;
+}
+
+void Room::sendGameData() {
+	for (auto&& fromClient : clients) {
+		if (fromClient->datavalid) {
+			for (auto&& toClient : clients)
+				if (fromClient->id != toClient->id)
+					conn->send(*fromClient, *toClient);
+			fromClient->datavalid=false;
+		}
+	}
+}
+
+void Room::makeCountdown() {
+	if (!round) {
+		if (countdown) {
+			if (start.getElapsedTime() > sf::seconds(1)) { //2-Packet 
+				countdown--;
+				start.restart();
+				conn->packet.clear();
+				sf::Uint8 packetid = 2;
+				conn->packet << packetid;
+				packetid = countdown;
+				conn->packet << packetid;
+				conn->send(*this, 1);
+				if (countdown == 0)
+					startGame();
+			}
+		}
+		else if (start.getElapsedTime() > sf::seconds(3)) { //1-Packet
+			countdown=countdownSetting;
+			start.restart();
+			conn->packet.clear();
+			sf::Uint8 packetid = 1;
+			conn->packet << packetid;
+			packetid = countdown;
+			conn->packet << packetid;
+			seed1 = rand();
+			seed2 = rand();
+			conn->packet << seed1 << seed2;
+			conn->send(*this, 1);
+			conn->packet.clear(); //11-Packet
+			packetid = 11;
+			conn->packet << packetid << seed1 << seed2;
+			conn->send(*this, 2);
+		}
+	}
+}
+
+void Room::checkIfRoundEnded() {
+	if (round) {
+		if (endround) {
+			bool nowinner=true;
+			conn->packet.clear();
+			sf::Uint8 packetid = 7; // 7-Packet
+			conn->packet << packetid;
+			for (auto&& winner : clients)
+				if (winner->alive) {
+					winner->position=1;
+					conn->send(*winner);
+					nowinner=false;
+
+					conn->packet.clear(); // 15-Packet
+					packetid = 15;
+					conn->packet << packetid << winner->id << winner->position;
+					conn->send(*this);
+					break;
+				}
+			if (nowinner) {
+				conn->packet.clear();
+				packetid = 7;
+				conn->packet << packetid;
+				conn->send(*this);
+			}
+			if (gamemode == 1)
+				scoreFFARound();
+			endRound();
+		}
+	}
 }

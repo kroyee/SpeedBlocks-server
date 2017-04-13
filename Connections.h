@@ -52,8 +52,9 @@ public:
 	void sendWelcome();
 	void manageRooms();
 	void manageClients();
+	void manageUploadData();
 
-	void handle();
+	void handlePacket();
 };
 
 #endif

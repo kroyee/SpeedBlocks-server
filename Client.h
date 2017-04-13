@@ -8,6 +8,7 @@
 #include "MingwConvert.h"
 
 class Room;
+class Connections;
 
 class PlayfieldHistory {
 public:
@@ -16,7 +17,7 @@ public:
 
 class Client {
 public:
-	Client() { guest=true; away=false; }
+	Client(Connections* _conn) : conn(_conn), guest(false), away(false) {}
 	Client(const Client& client);
 	sf::IpAddress address;
 	sf::TcpSocket socket;
@@ -25,6 +26,7 @@ public:
 	sf::Packet data;
 	sf::Uint16 udpPort;
 	Room* room;
+	Connections* conn;
 
 	sf::String name;
 	sf::String authpass;
@@ -53,6 +55,9 @@ public:
 	float getDataFloat(short, short, std::string&);
 	void authUser();
 	void copy(Client&);
+	void checkIfStatsSet();
+	void checkIfAuth();
+	void sendLines();
 };
 
 #endif

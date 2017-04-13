@@ -53,7 +53,7 @@ int main() {
 	while (!quit) {
 		if (conn.listen())
 			if (conn.receive())
-				conn.handle();
+				conn.handlePacket();
 
 		conn.manageRooms();
 		conn.manageClients();
