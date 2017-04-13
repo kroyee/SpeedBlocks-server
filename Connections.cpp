@@ -373,7 +373,9 @@ void Connections::handlePacket() {
 			for (int c=0; packet >> extractor.tmp[c]; c++) {}
 
 			for (auto&& client : clients)
-				if (client.id == dataid)
+				if (client.id == dataid) {
+					if (client.udpPort != udpPortRec)
+						client.udpPort = udpPortRec;
 					if ((datacount<50 && client.datacount>200) || client.datacount<datacount) {
 						client.datacount=datacount;
 						client.data=packet;
@@ -384,6 +386,7 @@ void Connections::handlePacket() {
 							client.history.pop_back();
 						extractor.extract(client.history.front());
 					}
+				}
 		break;
 	}
 }
