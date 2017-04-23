@@ -3,12 +3,13 @@
 
 void Client::authUser() {
 	std::cout << "Authing user..." << std::endl;
-	sf::Http::Request request("/speedblocks/smftestauth.php", sf::Http::Request::Post);
+	sf::Http::Request request("/auth.php", sf::Http::Request::Post);
 
     sf::String stream = "name=" + name + "&pass=" + authpass;
     request.setBody(stream);
+    request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://speedblocks.esy.es");
+    sf::Http http("http://82.102.5.7");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -22,6 +23,7 @@ void Client::authUser() {
         }
         else {
         	std::cout << "Auth failed" << std::endl;
+        	std::cout << response.getBody() << std::endl;
         	authresult=2;
         }
     }
@@ -32,7 +34,7 @@ void Client::authUser() {
 }
 
 void Client::sendData() {
-	sf::Http::Request request("/speedblocks/add.php", sf::Http::Request::Post);
+	sf::Http::Request request("/put.php", sf::Http::Request::Post);
 
 	sf::String tmp = to_string(s_avgBpm);
 	unsigned short c = tmp.find('.');
@@ -45,8 +47,9 @@ void Client::sendData() {
     stream += "&heropoints="+to_string(s_heropoints)+"&totalbpm="+to_string(s_totalBpm);
     stream += "&totalgamesplayed="+to_string(s_totalGames)+"&herorank="+to_string(s_herorank);
     request.setBody(stream);
+    request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://speedblocks.esy.es");
+    sf::Http http("http://82.102.5.7");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -61,12 +64,13 @@ void Client::sendData() {
 
 void Client::getData() {
 	std::cout << "Getting data for " << (int)id << std::endl;
-	sf::Http::Request request("/speedblocks/get.php", sf::Http::Request::Post);
+	sf::Http::Request request("/get.php", sf::Http::Request::Post);
 
     sf::String stream = "id=" + to_string(id);
     request.setBody(stream);
+    request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://speedblocks.esy.es");
+    sf::Http http("http://82.102.5.7");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -100,9 +104,9 @@ void Client::getData() {
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_rank = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
-	    	s_totalBpm = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
 	    	s_totalGames = getDataInt(c2,c,data);
+	    	c2=c+1; c=data.find('%',c2);
+	    	s_totalBpm = getDataInt(c2,c,data);
 	    	std::cout << "Data retrieved for " << (int)id << std::endl;
 	    	sdataInit=true;
 	    	sdataSet=true;

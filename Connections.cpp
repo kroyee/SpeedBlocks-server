@@ -61,7 +61,7 @@ bool Connections::receive() {
 			else if (status == sf::Socket::Disconnected) {
 				if (!it->guest) {
 					uploadData.push_back(*it);
-					uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(300);
+					uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(0);
 				}
 				if (it->room != nullptr)
 					it->room->leave(*it);
