@@ -9,7 +9,7 @@ void Client::authUser() {
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://82.102.5.7");
+    sf::Http http("http://localhost");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -49,7 +49,7 @@ void Client::sendData() {
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://82.102.5.7");
+    sf::Http http("http://localhost");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -70,7 +70,7 @@ void Client::getData() {
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
-    sf::Http http("http://82.102.5.7");
+    sf::Http http("http://localhost");
     sf::Http::Response response = http.sendRequest(request);
 
     if (response.getStatus() == sf::Http::Response::Ok) {

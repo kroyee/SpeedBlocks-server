@@ -9,7 +9,7 @@
 
 class Connections {
 public:
-	Connections() : lobby(this) { clientVersion=1; clientCount=0; idcount=60000; tcpPort=21512; udpPort=21513; udpSock.bind(21514); selector.add(udpSock); }
+	Connections() : lobby(this) { clientVersion=2; clientCount=0; idcount=60000; tcpPort=21512; udpPort=21513; udpSock.bind(21514); selector.add(udpSock); }
 	
 	std::list<Client> clients;
 
