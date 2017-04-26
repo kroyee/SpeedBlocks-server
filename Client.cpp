@@ -43,7 +43,7 @@ void Client::sendData() {
 
     sf::String stream = "id="+to_string(id)+"&maxcombo="+to_string(s_maxCombo)+"&maxbpm="+to_string(s_maxBpm);
     stream += "&gamesplayed="+to_string(s_gamesPlayed)+"&avgbpm="+tmp;
-    stream += "&gameswon="+to_string(s_gamesWon)+"&rank="+to_string(s_rank)+"&points="+to_string(s_points);
+    stream += "&gameswon="+to_string(s_gamesWon)+"&rank="+to_string(s_rank)+"&points="+to_string(s_points+1000);
     stream += "&heropoints="+to_string(s_heropoints)+"&totalbpm="+to_string(s_totalBpm);
     stream += "&totalgamesplayed="+to_string(s_totalGames)+"&herorank="+to_string(s_herorank);
     request.setBody(stream);
@@ -100,7 +100,7 @@ void Client::getData() {
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_maxCombo = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
-	    	s_points = getDataInt(c2,c,data);
+			s_points = getDataInt(c2,c,data)-1000;
 	    	c2=c+1; c=data.find('%',c2);
 	    	s_rank = getDataInt(c2,c,data);
 	    	c2=c+1; c=data.find('%',c2);
