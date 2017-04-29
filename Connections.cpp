@@ -175,12 +175,12 @@ void Connections::handlePacket() {
 		case 1: //Player left a room
 			sender->room->leave(*sender);
 		break;
-		case 2: //Players telling server it's UDP port & authing
+		case 2: //Players authing
 		{
 			sf::String name, pass;
 			sf::Uint8 guest;
 			sf::Uint16 version;
-			packet >> version >> sender->udpPort >> guest >> sender->name >> sender->authpass;
+			packet >> version >> guest >> sender->name >> sender->authpass;
 			if (version != clientVersion) {
 				packet.clear(); //9-Packet nr3
 				sf::Uint8 packetid = 9;
@@ -366,6 +366,7 @@ void Connections::handlePacket() {
 		}
 		break;
 		case 100: // UDP packet with gamestate
+		{
 			sf::Uint16 dataid;
 			sf::Uint8 datacount;
 
@@ -374,8 +375,6 @@ void Connections::handlePacket() {
 
 			for (auto&& client : clients)
 				if (client.id == dataid) {
-					if (client.udpPort != udpPortRec)
-						client.udpPort = udpPortRec;
 					if ((datacount<50 && client.datacount>200) || client.datacount<datacount) {
 						client.datacount=datacount;
 						client.data=packet;
@@ -387,7 +386,23 @@ void Connections::handlePacket() {
 						extractor.extract(client.history.front());
 					}
 				}
+		}
 		break;
+		case 101: // UDP packet to show server the right port
+		{
+			sf::Uint16 clientid;
+			packet >> clientid;
+			for (auto&& client : clients)
+				if (client.id == clientid) {
+					if (client.udpPort != udpPortRec)
+						client.udpPort = udpPortRec;
+					packet.clear(); // 19-Packet
+					sf::Uint8 packetid = 19;
+					packet << packetid;
+					send(*sender);
+					cout << "Confirmed UDP port for " << sender->id << endl;
+				}
+		}
 	}
 }
 
