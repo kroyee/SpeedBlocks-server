@@ -44,10 +44,8 @@ bool Connections::receive() {
 	packet.clear();
 	if (selector.isReady(udpSock)) {
 		status = udpSock.receive(packet, udpAdd, udpPortRec);
-		if (status == sf::Socket::Done) {
-			gameData=true;
+		if (status == sf::Socket::Done)
 			return true;
-		}
 	}
 	packet.clear();
 	for (auto it = clients.begin(); it != clients.end();  it++)
@@ -55,7 +53,6 @@ bool Connections::receive() {
 			status = it->socket.receive(packet);
 			if (status == sf::Socket::Done) {
 				sender = &(*it);
-				gameData=false;
 				return true;
 			}
 			else if (status == sf::Socket::Disconnected) {
@@ -133,6 +130,19 @@ void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
 		std::cout << "Packet id: " << (int)id << std::endl;
+	else {
+		sf::Uint16 clientid;
+		packet >> clientid;
+		bool valid=false;
+		for (auto&& client : clients)
+			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPortRec) {
+				sender = &client;
+				valid=true;
+				break;
+			}
+		if (!valid)
+			return;
+	}
 	switch (id) {
 		case 0: //Player wanting to join a room
 		{
@@ -365,31 +375,7 @@ void Connections::handlePacket() {
 			lobby.addRoom(name, max, 3);
 		}
 		break;
-		case 100: // UDP packet with gamestate
-		case 102:
-		{
-			sf::Uint16 dataid;
-			sf::Uint8 datacount;
-
-			packet >> dataid >> datacount;
-			for (int c=0; packet >> extractor.tmp[c]; c++) {}
-
-			for (auto&& client : clients)
-				if (client.id == dataid) {
-					if ((datacount<50 && client.datacount>200) || client.datacount<datacount) {
-						client.datacount=datacount;
-						client.data=packet;
-						client.datavalid=true;
-						PlayfieldHistory history;
-						client.history.push_front(history);
-						if (client.history.size() > 100)
-							client.history.pop_back();
-						extractor.extract(client.history.front());
-					}
-				}
-		}
-		break;
-		case 101: // UDP packet to show server the right port
+		case 99: // UDP packet to show server the right port
 		{
 			sf::Uint16 clientid;
 			packet >> clientid;
@@ -400,10 +386,31 @@ void Connections::handlePacket() {
 					packet.clear(); // 19-Packet
 					sf::Uint8 packetid = 19;
 					packet << packetid;
-					send(*sender);
+					send(client);
 					cout << "Confirmed UDP port for " << sender->id << endl;
 				}
 		}
+		break;
+		case 100: // UDP packet with gamestate
+		case 101:
+		{
+			sf::Uint8 datacount;
+
+			packet >> datacount;
+			for (int c=0; packet >> extractor.tmp[c]; c++) {}
+
+			if ((datacount<50 && sender->datacount>200) || sender->datacount<datacount) {
+				sender->datacount=datacount;
+				sender->data=packet;
+				sender->datavalid=true;
+				PlayfieldHistory history;
+				sender->history.push_front(history);
+				if (sender->history.size() > 100)
+					sender->history.pop_back();
+				extractor.extract(sender->history.front());
+			}
+		}
+		break;
 	}
 }
 

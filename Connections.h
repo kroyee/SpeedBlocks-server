@@ -20,7 +20,6 @@ public:
 
 	sf::Packet packet;
 	sf::Uint8 id;
-	bool gameData;
 	sf::TcpListener listener;
 	sf::SocketSelector selector;
 	sf::UdpSocket udpSock;
