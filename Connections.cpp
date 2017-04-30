@@ -366,6 +366,7 @@ void Connections::handlePacket() {
 		}
 		break;
 		case 100: // UDP packet with gamestate
+		case 102:
 		{
 			sf::Uint16 dataid;
 			sf::Uint8 datacount;
