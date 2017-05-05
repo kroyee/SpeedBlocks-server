@@ -1,5 +1,5 @@
 #include "PacketCompress.h"
-#include "network.h"
+#include "Client.h"
 
 void PacketCompress::extract(PlayfieldHistory& history) {
 	tmpcount=0;

@@ -2,6 +2,9 @@
 #include <SFML/Network.hpp>
 #include <thread>
 #include "Connections.h"
+#include "Tournament.h"
+using std::cout;
+using std::endl;
 
 bool quit=false;
 bool status=false;
@@ -44,11 +47,21 @@ int main() {
 
 	std::cout << "Listener set up" << std::endl;
 
-	conn.lobby.addRoom("Standard", 0, 1);
+	conn.lobby.addRoom("Standard", 0, 1, 3);
 	conn.lobby.idcount=1;
-	conn.lobby.addRoom("Fast and Furious", 5, 3);
+	conn.lobby.addRoom("Fast and Furious", 5, 3, 3);
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
+
+	Tournament tourney;
+	for (int i=0; i<5; i++)
+		tourney.addPlayer(to_string(i+1) + "Dude", i);
+
+	tourney.makeBracket();
+	tourney.putPlayersInBracket();
+	tourney.printBracket();
+	tourney.collapseBracket();
+	tourney.printBracket();
 
 	while (!quit) {
 		if (conn.listen())

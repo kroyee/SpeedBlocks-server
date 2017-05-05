@@ -31,7 +31,7 @@ bool Connections::receive() {
 			clients.back().address = clients.back().socket.getRemoteAddress();
 			selector.add(clients.back().socket);
 			clientCount++;
-			sendWelcome();
+			sendPacket0();
 		}
 		else {
 			std::cout << "CLient accept failed" << std::endl;
@@ -43,7 +43,7 @@ bool Connections::receive() {
 	}
 	packet.clear();
 	if (selector.isReady(udpSock)) {
-		status = udpSock.receive(packet, udpAdd, udpPortRec);
+		status = udpSock.receive(packet, udpAdd, udpPort);
 		if (status == sf::Socket::Done)
 			return true;
 	}
@@ -113,19 +113,6 @@ void Connections::send(Client& fromClient, Client& toClient) {
 		std::cout << "Error sending UDP packet from " << (int)fromClient.id << " to " << (int)toClient.id << std::endl;
 }
 
-void Connections::sendWelcome() { //0-Packet
-	packet.clear();
-	sf::Uint8 packetid = 0;
-	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
-	for (auto&& it : lobby.rooms)
-		packet << it.id << it.name << it.currentPlayers << it.maxPlayers;
-	send(clients.back());
-}
-
-bool sortClient(Client* client1, Client* client2) {
-	return client1->score > client2->score;
-}
-
 void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
@@ -135,7 +122,7 @@ void Connections::handlePacket() {
 		packet >> clientid;
 		bool valid=false;
 		for (auto&& client : clients)
-			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPortRec) {
+			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPort) {
 				sender = &client;
 				valid=true;
 				break;
@@ -157,28 +144,12 @@ void Connections::handlePacket() {
 					if (alreadyin)
 						break;
 					if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (sender->sdataInit || sender->guest)) {
-						packet.clear();
-						sf::Uint8 packetid = 3; //3-Packet
-						sf::Uint8 joinok = 1;
-						packet << packetid << joinok << it.seed1 << it.seed2 << it.currentPlayers;
-						for (auto&& inroom : it.clients)
-							packet << inroom->id << inroom->name;
-						send(*sender);
-
-						packet.clear(); //4-packet
-						packetid = 4;
-						packet << packetid << sender->id << sender->name;
-						for (auto&& inroom : it.clients)
-							send(*inroom);
+						sendPacket3(it, 1);
+						sendPacket4(it);
 						it.join(*sender);
 					}
-					else {
-						packet.clear(); //3-Packet
-						sf::Uint8 packetid = 3;
-						sf::Uint8 joinok = 0;
-						packet << packetid << joinok;
-						send(*sender);
-					}
+					else
+						sendPacket3(it, 0);
 				}
 		}
 		break;
@@ -192,26 +163,13 @@ void Connections::handlePacket() {
 			sf::Uint16 version;
 			packet >> version >> guest >> sender->name >> sender->authpass;
 			if (version != clientVersion) {
-				packet.clear(); //9-Packet nr3
-				sf::Uint8 packetid = 9;
-				packet << packetid;
-				packetid=3;
-				packet << packetid;
-				send(*sender);
+				sendPacket9(3, *sender);
 				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
 			}
 			else if (guest) {
-				packet.clear(); //9-Packet nr2
-				sf::Uint8 packetid = 9;
-				packet << packetid;
+				sendPacket9(2, *sender);
 				sender->guest=true;
 				sender->s_rank=25;
-				packetid=2;
-				for (auto&& client : clients) // Checking for duplicate names, and sending back 4 if found
-					if (client.id != sender->id && client.name == sender->name)
-						packetid=4;
-				packet << packetid;
-				send(*sender);
 				std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 			}
 			else
@@ -223,39 +181,23 @@ void Connections::handlePacket() {
 		{
 			sender->alive=false;
 			sender->position=sender->room->playersAlive;
+			sender->ready=false;
 			sender->room->playerDied();
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
 
-			packet.clear(); //15-Packet
-			sf::Uint8 packetid = 15;
-			packet << packetid << sender->id << sender->position;
-			send(*sender->room);
+			sendPacket15(*sender);
 		}
 		break;
 		case 4: //Player won and sending round-data
 		{
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
-			packet.clear(); // 8-Packet
-			sf::Uint8 packetid = 8, count=0;
-			for (auto&& client : sender->room->clients)
-				if (client->position)
-					count++;
-			packet << packetid << count;
-			sender->room->clients.sort(&sortClient);
-			for (auto&& client : sender->room->clients) {
-				if (client->position) {
-					packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
-					packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
-					packet << client->score << client->linesAdjusted;
-				}
-			}
+			sendPacket8();
 			sender->room->updatePlayerScore();
 			sender->s_gamesWon++;
 			if (sender->bpm > sender->s_maxBpm && sender->room->roundLenght > sf::seconds(10))
 				sender->s_maxBpm = sender->bpm;
-			send(*sender->room);
 		}
 		break;
 		case 5: //Player sent lines
@@ -312,10 +254,7 @@ void Connections::handlePacket() {
 						sender->room->setInactive();
 				}
 				sender->away=true;
-				packet.clear(); //13-Packet
-				sf::Uint8 packetid = 13;
-				packet << packetid << sender->id;
-				send(*sender->room);
+				sendPacket13();
 			}
 		break;
 		case 9: //Player came back
@@ -328,43 +267,18 @@ void Connections::handlePacket() {
 					sender->room->setActive();
 				}
 			sender->away=false;
-			packet.clear(); //14-Packet
-			sf::Uint8 packetid = 14;
-			packet << packetid << sender->id;
-			send(*sender->room);
+			sendPacket14();
 		}
 		break;
 		case 10: // Chat msg
 		{
-			sf::Uint8 type, packetid = 12; //12-Packet
-			sf::String to, msg;
+			sf::Uint8 type;
+			sf::String to = "", msg;
 			packet >> type;
-			if (type == 1) {
-				packet >> msg;
-				packet.clear();
-				packet << packetid << type << sender->name << msg;
-				for (auto&& client : sender->room->clients)
-					if (client->id != sender->id)
-						send(*client);
-			}
-			else if (type == 2) {
-				packet >> msg;
-				packet.clear();
-				packet << packetid << type  << sender->name << msg;
-				for (auto&& client : clients)
-					if (client.id != sender->id)
-						send(client);
-			}
-			else {
-				packet >> to >> msg;
-				packet.clear();
-				packet << packetid << type << sender->name << msg;
-				for (auto&& client : clients)
-					if (client.name == to) {
-						send(client);
-						break;
-					}
-			}
+			if (type == 3)
+				packet >> to;
+			packet >> msg;
+			sendPacket12(type, to, msg);
 		}
 		break;
 		case 11: //Player creating a room
@@ -372,7 +286,7 @@ void Connections::handlePacket() {
 			sf::String name;
 			sf::Uint8 max;
 			packet >> name >> max;
-			lobby.addRoom(name, max, 3);
+			lobby.addRoom(name, max, 3, 3);
 		}
 		break;
 		case 99: // UDP packet to show server the right port
@@ -381,12 +295,9 @@ void Connections::handlePacket() {
 			packet >> clientid;
 			for (auto&& client : clients)
 				if (client.id == clientid) {
-					if (client.udpPort != udpPortRec)
-						client.udpPort = udpPortRec;
-					packet.clear(); // 19-Packet
-					sf::Uint8 packetid = 19;
-					packet << packetid;
-					send(client);
+					if (client.udpPort != udpPort)
+						client.udpPort = udpPort;
+					sendPacket19(client);
 					cout << "Confirmed UDP port for " << sender->id << endl;
 				}
 		}

@@ -35,7 +35,7 @@ public:
 	short countdownSetting;
 	short countdown;
 	bool round, endround;
-	sf::Time countdownTime, roundLenght;
+	sf::Time countdownTime, roundLenght, timeBetweenRounds;
 	sf::Uint8 playersAlive;
 	sf::Uint16 seed1, seed2;
 
@@ -54,6 +54,7 @@ public:
 	void sendGameData();
 	void makeCountdown();
 	void checkIfRoundEnded();
+	void startCountdown();
 };
 
 #endif

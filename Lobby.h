@@ -16,7 +16,7 @@ public:
 	sf::Uint8 roomCount;
 	sf::Uint16 idcount;
 
-	void addRoom(const sf::String& name, short, sf::Uint8);
+	void addRoom(const sf::String& name, short, sf::Uint8 mode, sf::Uint8 delay);
 	void removeIdleRooms();
 	void setMsg(const sf::String& msg);
 	void sendRoomList(Client&);

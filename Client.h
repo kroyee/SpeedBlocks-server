@@ -32,7 +32,7 @@ public:
 	sf::String authpass;
 	sf::Uint8 authresult;
 
-	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataInit, sdataPut, away;
+	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataInit, sdataPut, away, ready;
 
 	std::thread thread;
 

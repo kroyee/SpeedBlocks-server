@@ -175,16 +175,11 @@ void Client::checkIfAuth() {
 	if (authresult) {
 		if (thread.joinable()) {
 			thread.join();
-			sf::Uint8 packetid = 9;
-			if (authresult==1) { //9-Packet nr2
-				conn->packet.clear();
-				conn->packet << packetid;
-				packetid=1;
+			if (authresult==1) {
 				std::cout << "Client: " << id << " -> ";
 				id = stoi(authpass.toAnsiString());
 				std::cout << id << std::endl;
-				conn->packet << packetid << name << id;
-				conn->send(*this);
+				conn->sendPacket9(1, *this);
 				guest=false;
 				bool copyfound=false;
 				for (auto it = conn->uploadData.begin(); it != conn->uploadData.end(); it++)
@@ -200,11 +195,7 @@ void Client::checkIfAuth() {
 				authresult=0;
 			}
 			else if (authresult==2) {
-				conn->packet.clear();
-				conn->packet << packetid;
-				packetid=0;
-				conn->packet << packetid;
-				conn->send(*this);
+				conn->sendPacket9(0, *this);
 				authresult=0;
 			}
 			else {
@@ -222,9 +213,6 @@ void Client::sendLines() {
 			amount++;
 			incLines-=1.0f;
 		}
-		conn->packet.clear(); // 10-Packet
-		sf::Uint8 packetid = 10;
-		conn->packet << packetid << amount;
-		conn->send(*this);
+		conn->sendPacket10(*this, amount);
 	}
 }
