@@ -46,6 +46,7 @@ public:
 	void send(Client&, Client&);
 	void send(Room&);
 	void send(Room&, short);
+	void sendUDP(Client& client);
 
 	void manageRooms();
 	void manageClients();
@@ -74,6 +75,7 @@ public:
 	void sendPacket17(Room& room);
 	void sendPacket18(sf::Uint16 id);
 	void sendPacket19(Client& client);
+	void sendPacket102();
 };
 
 #endif

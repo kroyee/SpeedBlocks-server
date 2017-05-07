@@ -113,6 +113,12 @@ void Connections::send(Client& fromClient, Client& toClient) {
 		std::cout << "Error sending UDP packet from " << (int)fromClient.id << " to " << (int)toClient.id << std::endl;
 }
 
+void Connections::sendUDP(Client& client) {
+	status = udpSock.send(packet, client.address, client.udpPort);
+	if (status != sf::Socket::Done)
+		std::cout << "Error sending UDP packet to " << (int)client.id << std::endl;
+}
+
 void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
@@ -321,6 +327,9 @@ void Connections::handlePacket() {
 				extractor.extract(sender->history.front());
 			}
 		}
+		break;
+		case 102:
+			sendPacket102();
 		break;
 	}
 }

@@ -216,3 +216,10 @@ void Connections::sendPacket19(Client& client) {
 	packet << packetid;
 	send(client);
 }
+
+void Connections::sendPacket102() {
+	packet.clear();
+	sf::Uint8 packetid = 102;
+	packet << packetid;
+	sendUDP(*sender);
+}
