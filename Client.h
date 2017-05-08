@@ -46,6 +46,7 @@ public:
 	sf::Uint32 s_gamesPlayed, s_gamesWon, s_totalGames, s_totalBpm;
 
 	sf::Time uploadTime;
+	sf::Time lastHeardFrom;
 
 	std::list<PlayfieldHistory> history;
 

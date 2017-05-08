@@ -29,6 +29,7 @@ bool Connections::receive() {
 		if (listener.accept(clients.back().socket) == sf::Socket::Done) {
 			std::cout << "Client accepted: " << idcount-1  << std::endl;
 			clients.back().address = clients.back().socket.getRemoteAddress();
+			clients.back().lastHeardFrom = uploadClock.getElapsedTime();
 			selector.add(clients.back().socket);
 			clientCount++;
 			sendPacket0();
@@ -53,23 +54,28 @@ bool Connections::receive() {
 			status = it->socket.receive(packet);
 			if (status == sf::Socket::Done) {
 				sender = &(*it);
+				sender->lastHeardFrom = uploadClock.getElapsedTime();
 				return true;
 			}
 			else if (status == sf::Socket::Disconnected) {
-				if (!it->guest) {
-					uploadData.push_back(*it);
-					uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(0);
-				}
-				if (it->room != nullptr)
-					it->room->leave(*it);
-				selector.remove(it->socket);
-				it->socket.disconnect();
-				std::cout << "Client " << it->id << " disconnected" << std::endl;
+				disconnectClient(*it);
 				it = clients.erase(it);
-				clientCount--;
 			}
 		}
 	return false;
+}
+
+void Connections::disconnectClient(Client& client) {
+	if (!client.guest) {
+		uploadData.push_back(client);
+		uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(0);
+	}
+	if (client.room != nullptr)
+		client.room->leave(client);
+	selector.remove(client.socket);
+	client.socket.disconnect();
+	std::cout << "Client " << client.id << " disconnected" << std::endl;
+	clientCount--;
 }
 
 void Connections::send(Client& client) {
@@ -131,6 +137,7 @@ void Connections::handlePacket() {
 			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPort) {
 				sender = &client;
 				valid=true;
+				sender->lastHeardFrom = uploadClock.getElapsedTime();
 				break;
 			}
 		if (!valid)
@@ -346,10 +353,15 @@ void Connections::manageRooms() {
 }
 
 void Connections::manageClients() {
-	for (auto&& client : clients) {
-		client.checkIfStatsSet();
-		client.checkIfAuth();
-		client.sendLines();
+	for (auto it = clients.begin(); it != clients.end();  it++) {
+		if (uploadClock.getElapsedTime() - it->lastHeardFrom > sf::seconds(10)) {
+			disconnectClient(*it);
+			it = clients.erase(it);
+			continue;
+		}
+		it->checkIfStatsSet();
+		it->checkIfAuth();
+		it->sendLines();
 	}
 	
 	manageUploadData();

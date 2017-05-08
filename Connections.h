@@ -42,6 +42,7 @@ public:
 	bool setUpListener();
 	bool listen();
 	bool receive();
+	void disconnectClient(Client&);
 	void send(Client&);
 	void send(Client&, Client&);
 	void send(Room&);
