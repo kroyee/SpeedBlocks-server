@@ -4,6 +4,8 @@
 using std::cout;
 using std::endl;
 
+Results::Results() {}
+
 Participant::Participant() : id(0), name("") {}
 
 Node::Node() {
@@ -25,10 +27,12 @@ void Bracket::clear() {
 	idCount=1;
 }
 
-void Bracket::addGame(short _depth) {
+void Bracket::addGame(short _depth, sf::Uint8 sets) {
 	Node newgame;
 	newgame.depth = _depth;
 	newgame.id = idCount;
+	newgame.result.set.resize(sets);
+	newgame.result.round.resize(sets);
 	idCount++;
 	games.push_back(newgame);
 	depth = _depth;
@@ -77,15 +81,15 @@ void Tournament::makeBracket() {
 	gamesNeeded++;
 
 	short currentDepth=1;
-	bracket.addGame(currentDepth);
+	bracket.addGame(currentDepth, sets);
 
 	while (bracket.gameCount < gamesNeeded) {
 		bracket.gameCount=0;
 		for (auto&& game : bracket.games)
 			if (game.depth == currentDepth) {
-				bracket.addGame(currentDepth+1);
+				bracket.addGame(currentDepth+1, sets);
 				linkGames(game, bracket.games.back());
-				bracket.addGame(currentDepth+1);
+				bracket.addGame(currentDepth+1, sets);
 				linkGames(game, bracket.games.back());
 			}
 		currentDepth++;

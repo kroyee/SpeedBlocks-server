@@ -57,6 +57,8 @@ int main() {
 	for (int i=0; i<5; i++)
 		tourney.addPlayer(to_string(i+1) + "Dude", i);
 
+	tourney.sets = 3;
+	tourney.rounds = 11;
 	tourney.makeBracket();
 	tourney.putPlayersInBracket();
 	tourney.printBracket();

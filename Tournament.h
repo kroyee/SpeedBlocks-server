@@ -6,6 +6,13 @@
 
 class Client;
 
+class Results {
+public:
+	Results();
+	std::vector<sf::Uint8> set;
+	std::vector<sf::Uint8> round;
+};
+
 class Participant {
 public:
 	Participant();
@@ -20,6 +27,9 @@ public:
 	Node *p1game, *p2game, *nextgame;
 	short depth;
 	sf::Uint16 id;
+	Results result;
+	std::vector<sf::Packet> p1Replays, p2Replays;
+	time_t startingTime;
 };
 
 class Bracket {
@@ -32,7 +42,7 @@ public:
 	sf::Uint16 idCount;
 
 	void clear();
-	void addGame(short _depth);
+	void addGame(short _depth, sf::Uint8 sets);
 };
 
 class Tournament {
@@ -40,11 +50,14 @@ public:
 	Tournament();
 	std::list<Participant> participants;
 	Bracket bracket;
-	short players, rounds, sets;
+	sf::Uint16 players;
+	sf::Uint8 rounds, sets;
+	time_t startingTime;
+	std::vector<sf::Uint16> moderator_list;
 
 	sf::String name;
 
-	bool signupOpen, active;
+	bool signupOpen, active, useStartingTime, useGameStartingTime;
 
 	bool addPlayer(Client& client);
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
