@@ -34,7 +34,7 @@ void Connections::sendPacket3(Room& it, sf::Uint8 joinok) {
 	packet.clear();
 	sf::Uint8 packetid = 3;
 	packet << packetid << joinok;
-	if (joinok) {
+	if (joinok == 1) {
 		packet << it.seed1 << it.seed2 << it.currentPlayers;
 		for (auto&& inroom : it.clients)
 			packet << inroom->id << inroom->name;

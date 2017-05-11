@@ -161,8 +161,10 @@ void Connections::handlePacket() {
 						sendPacket4(it);
 						it.join(*sender);
 					}
+					else if (sender->sdataInit || sender->guest)
+						sendPacket3(it, 2);
 					else
-						sendPacket3(it, 0);
+						sendPacket3(it, 3);
 				}
 		}
 		break;
