@@ -29,6 +29,7 @@ void Room::startGame() {
 
 void Room::startCountdown() {
 	countdown=countdownSetting;
+	playersAlive=activePlayers;
 	start.restart();
 	seed1 = rand();
 	seed2 = rand();
