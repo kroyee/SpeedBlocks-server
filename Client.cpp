@@ -193,6 +193,7 @@ void Client::checkIfAuth() {
 				if (!copyfound)
 					thread = std::thread(&Client::getData, this);
 				authresult=0;
+				conn->sendPacket20(*this);
 			}
 			else if (authresult==2) {
 				conn->sendPacket9(0, *this);

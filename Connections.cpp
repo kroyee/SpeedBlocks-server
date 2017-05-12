@@ -66,6 +66,7 @@ bool Connections::receive() {
 }
 
 void Connections::disconnectClient(Client& client) {
+	sendPacket21(client);
 	if (!client.guest) {
 		uploadData.push_back(client);
 		uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(0);
@@ -186,6 +187,7 @@ void Connections::handlePacket() {
 				sender->guest=true;
 				sender->s_rank=25;
 				std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
+				sendPacket20(*sender);
 			}
 			else
 				sender->thread = std::thread(&Client::authUser, sender);
@@ -318,7 +320,6 @@ void Connections::handlePacket() {
 		}
 		break;
 		case 100: // UDP packet with gamestate
-		case 101:
 		{
 			sf::Uint8 datacount;
 

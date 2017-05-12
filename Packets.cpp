@@ -10,6 +10,10 @@ void Connections::sendPacket0() {
 	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
 	for (auto&& it : lobby.rooms)
 		packet << it.id << it.name << it.currentPlayers << it.maxPlayers;
+	sf::Uint16 adjusterClientCount = clientCount-1;
+	packet << adjusterClientCount;
+	for (auto&& client : clients)
+		packet << client.id << client.name;
 	send(clients.back());
 }
 
@@ -215,6 +219,26 @@ void Connections::sendPacket19(Client& client) {
 	sf::Uint8 packetid = 19;
 	packet << packetid;
 	send(client);
+}
+
+//Client joined the server
+void Connections::sendPacket20(Client& client) {
+	packet.clear();
+	sf::Uint8 packetid = 20;
+	packet << packetid << client.id << client.name;
+	for (auto&& otherClient : clients)
+		if (otherClient.id != client.id)
+			send(otherClient);
+}
+
+//Client left the server
+void Connections::sendPacket21(Client& client) {
+	packet.clear();
+	sf::Uint8 packetid = 21;
+	packet << packetid << client.id;
+	for (auto&& otherClient : clients)
+		if (otherClient.id != client.id)
+			send(otherClient);
 }
 
 void Connections::sendPacket102() {

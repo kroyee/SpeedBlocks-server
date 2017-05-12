@@ -33,7 +33,7 @@ public:
 
 	sf::Uint16 idcount, clientVersion;
 
-	sf::Uint8 clientCount;
+	sf::Uint16 clientCount;
 
 	Lobby lobby;
 
@@ -76,6 +76,8 @@ public:
 	void sendPacket17(Room& room);
 	void sendPacket18(sf::Uint16 id);
 	void sendPacket19(Client& client);
+	void sendPacket20(Client& client);
+	void sendPacket21(Client& client);
 	void sendPacket102();
 };
 

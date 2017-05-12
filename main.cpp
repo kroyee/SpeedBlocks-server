@@ -21,22 +21,6 @@ void getInput() {
 }
 
 int main() {
-	/*//Test
-	sf::Http::Request request("/speedblocks/testing.php", sf::Http::Request::Post);
-
-    sf::String stream = "id=1&maxbpm=30&maxcombo=57&avgbpm=65.6785432987";
-    request.setBody(stream);
-
-    sf::Http http("http://speedblocks.esy.es");
-    sf::Http::Response response = http.sendRequest(request);
-
-    if (response.getStatus() == sf::Http::Response::Ok) {
-    	std::cout << response.getBody() << std::endl;
-    }
-    else
-        std::cout << "request failed" << std::endl;
-    //TEST END*/
-
 	srand(time(NULL));
 
 	Connections conn;
