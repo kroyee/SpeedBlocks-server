@@ -199,7 +199,7 @@ void Connections::sendPacket16(Client& client) {
 void Connections::sendPacket17(Room& room) {
 	sf::Uint8 packetid = 17;
 	packet.clear();
-	packet << packetid << room.id << room.name << 1 << room.maxPlayers;
+	packet << packetid << room.id << room.name << room.currentPlayers << room.maxPlayers;
 	for (auto&& client : clients)
 		send(client);
 }
