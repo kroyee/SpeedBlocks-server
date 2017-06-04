@@ -1,5 +1,8 @@
 #include "Room.h"
 #include "Connections.h"
+#include "Tournament.h"
+using std::cout;
+using std::endl;
 
 void Room::startGame() {
 	round=true;
@@ -71,9 +74,11 @@ void Room::endRound() {
 	countdown=0;
 	roundLenght = start.restart();
 	activePlayers = currentPlayers;
-	for (auto&& client : clients)
+	for (auto&& client : clients) {
+		client->ready=false;
 		if (client->away)
 			activePlayers--;
+	}
 	conn->sendPacket6(*this);
 }
 
@@ -83,10 +88,9 @@ void Room::join(Client& jClient) {
 			countdown=0;
 		currentPlayers++;
 		activePlayers++;
-		if (activePlayers == 2)
-			endround=true;
+		if (activePlayers > 1)
+			setActive();
 		clients.push_back(&jClient);
-		setActive();
 		jClient.room = this;
 		jClient.alive=false; jClient.maxCombo=0; jClient.position=0; jClient.linesSent=0; jClient.linesReceived=0;
 		jClient.linesBlocked=0; jClient.bpm=0; jClient.spm=0; jClient.datavalid=false; jClient.score=0; jClient.incLines=0;
@@ -112,7 +116,7 @@ void Room::leave(Client& lClient) {
 				leavers.back().s_points=0;
 			}
 			it = clients.erase(it);
-			if (activePlayers == 0)
+			if (activePlayers < 2)
 				setInactive();
 			lClient.incLines = 0;
 			lClient.room = nullptr;
@@ -200,6 +204,24 @@ void Room::scoreFFARound() {
 	delete[] inround;
 }
 
+void Room::scoreTournamentRound() {
+	if (tournamentGame == nullptr)
+		return;
+	for (auto&& client : clients)
+		if (client->position == 1) {
+			if (tournamentGame->player1->id == client->id) {
+				if (tournamentGame->p1won())
+					active=false;
+			}
+			else if (tournamentGame->player2->id == client->id) {
+				if (tournamentGame->p2won())
+					active=false;
+			}
+			conn->sendPacket24(*tournamentGame);
+			return;
+		}
+}
+
 float eloExpected(float pointsA, float pointsB) { //Gives A's ExpectedPoints
 	return 1.0 / (1.0 + pow(10.0, (pointsB - pointsA) / 400.0));
 }
@@ -221,12 +243,20 @@ void Room::playerDied() {
 
 void Room::setInactive() {
 	active=false;
+	if (round) {
+		endround=true;
+		checkIfRoundEnded();
+	}
 	round=false;
 	countdown=0;
 	start.restart();
 }
 
 void Room::setActive() {
+	if (gamemode == 4)
+		if (tournamentGame != nullptr)
+			if (tournamentGame->status == 4)
+				return;
 	active=true;
 }
 
@@ -268,6 +298,7 @@ void Room::makeCountdown() {
 void Room::checkIfRoundEnded() {
 	if (round) {
 		if (endround) {
+			cout << "Round ended" << endl;
 			bool nowinner=true;
 			for (auto&& winner : clients)
 				if (winner->alive) {
@@ -282,6 +313,8 @@ void Room::checkIfRoundEnded() {
 				conn->sendPacket7(*this, nullptr);
 			if (gamemode == 1)
 				scoreFFARound();
+			else if (gamemode == 4)
+				scoreTournamentRound();
 			endRound();
 		}
 	}

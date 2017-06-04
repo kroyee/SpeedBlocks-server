@@ -5,6 +5,8 @@
 #include "Client.h"
 
 class Connections;
+class Node;
+class Tournament;
 
 class Adjust {
 public:
@@ -14,7 +16,7 @@ public:
 
 class Room {
 public:
-	Room(Connections* _conn) : conn(_conn), active(false), round(false) {}
+	Room(Connections* _conn) : conn(_conn), active(false), round(false), tournamentGame(nullptr) {}
 	Connections* conn;
 	sf::String name;
 	sf::Uint16 id;
@@ -39,13 +41,18 @@ public:
 	sf::Uint8 playersAlive;
 	sf::Uint16 seed1, seed2;
 
-	sf::Uint8 gamemode; // 1=Ranked FFA, 2=Ranked hero, 3=Unranked FFA
+	sf::Uint8 gamemode; // 1=Ranked FFA, 2=Ranked hero, 3=Unranked FFA, 4=Tournament, 5=1v1
+	Node* tournamentGame;
+	Tournament* tournament;
 
 	void join(Client&);
 	void leave(Client&);
 	void startGame();
 	void endRound();
+
 	void scoreFFARound();
+	void scoreTournamentRound();
+
 	void transfearScore();
 	void updatePlayerScore();
 	void playerDied();

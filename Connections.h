@@ -6,6 +6,7 @@
 #include <iostream>
 #include "PacketCompress.h"
 #include "Lobby.h"
+#include "Tournament.h"
 
 class Connections {
 public:
@@ -78,6 +79,11 @@ public:
 	void sendPacket19(Client& client);
 	void sendPacket20(Client& client);
 	void sendPacket21(Client& client);
+	void sendPacket22(Client& client);
+	void sendPacket23(Tournament& tournament);
+	void sendPacket24(Node& game);
+	void sendPacket25();
+	void sendPacket26();
 	void sendPacket102();
 };
 

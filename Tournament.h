@@ -5,12 +5,18 @@
 #include <list>
 
 class Client;
+class Room;
+class Tournament;
+class Connections;
 
 class Results {
 public:
 	Results();
-	std::vector<sf::Uint8> set;
-	std::vector<sf::Uint8> round;
+	sf::Uint8 p1_sets;
+	sf::Uint8 p2_sets;
+
+	std::vector<sf::Uint8> p1_rounds;
+	std::vector<sf::Uint8> p2_rounds;
 };
 
 class Participant {
@@ -22,52 +28,70 @@ public:
 
 class Node {
 public:
-	Node();
+	Node(Tournament&);
+	Tournament& tournament;
 	Participant *player1, *player2;
 	Node *p1game, *p2game, *nextgame;
-	short depth;
+	sf::Uint8 depth, status, sets, rounds, activeSet;
 	sf::Uint16 id;
 	Results result;
 	std::vector<sf::Packet> p1Replays, p2Replays;
 	time_t startingTime;
+	Room* room;
+
+	bool p1won();
+	bool p2won();
+	void sendResults(bool asPart=false);
+	void decideGame();
 };
 
 class Bracket {
 public:
 	Bracket();
-	std::list<Node> games;
+	std::vector<Node> games;
 	short players;
 	short depth;
 	short gameCount;
 	sf::Uint16 idCount;
 
 	void clear();
-	void addGame(short _depth, sf::Uint8 sets);
+	void addGame(short _depth, Tournament& tournament);
 };
 
 class Tournament {
 public:
-	Tournament();
+	Tournament(Connections&);
+	Connections& conn;
 	std::list<Participant> participants;
+	std::list<Client*> keepUpdated;
 	Bracket bracket;
 	sf::Uint16 players;
 	sf::Uint8 rounds, sets;
 	time_t startingTime;
 	std::vector<sf::Uint16> moderator_list;
+	sf::Uint8 status;
 
 	sf::String name;
-
-	bool signupOpen, active, useStartingTime, useGameStartingTime;
+	sf::Uint16 id;
 
 	bool addPlayer(Client& client);
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
 	bool removePlayer(sf::Uint16 id);
+	void addObserver(Client& client);
 
 	void makeBracket();
 	void linkGames(Node& game1, Node& game2);
 	void putPlayersInBracket();
+	void setGameStatus();
 	void collapseBracket();
 	void printBracket();
+	void sendTournament();
+	void sendParticipantList(bool asPart=false);
+	void sendModeratorList(bool asPart=false);
+	void sendStatus(bool asPart=false);
+	void sendGames(bool asPart=false);
+
+	void sendToTournamentObservers();
 };
 
 #endif

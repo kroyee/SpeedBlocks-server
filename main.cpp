@@ -2,7 +2,6 @@
 #include <SFML/Network.hpp>
 #include <thread>
 #include "Connections.h"
-#include "Tournament.h"
 using std::cout;
 using std::endl;
 
@@ -35,19 +34,11 @@ int main() {
 	conn.lobby.idcount=1;
 	conn.lobby.addRoom("Fast and Furious", 5, 3, 3);
 
+	conn.lobby.addTournament("Monday Showdown", 60000);
+	for (int i=0; i<10; i++)
+		conn.lobby.tournaments.back().addPlayer("Dude " + to_string(i), i);
+
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
-
-	Tournament tourney;
-	for (int i=0; i<5; i++)
-		tourney.addPlayer(to_string(i+1) + "Dude", i);
-
-	tourney.sets = 3;
-	tourney.rounds = 11;
-	tourney.makeBracket();
-	tourney.putPlayersInBracket();
-	tourney.printBracket();
-	tourney.collapseBracket();
-	tourney.printBracket();
 
 	while (!quit) {
 		if (conn.listen())

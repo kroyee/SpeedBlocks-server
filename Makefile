@@ -32,3 +32,6 @@ Tournament.o: Tournament.cpp Tournament.h
 
 run: server
 	lxterminal -e /home/super/Documents/programming/server/server
+
+clean:
+	rm /home/super/Documents/programming/server/*.o

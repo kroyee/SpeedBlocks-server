@@ -33,6 +33,7 @@ bool Connections::receive() {
 			selector.add(clients.back().socket);
 			clientCount++;
 			sendPacket0();
+			lobby.sendTournamentList(clients.back());
 		}
 		else {
 			std::cout << "CLient accept failed" << std::endl;
@@ -146,28 +147,7 @@ void Connections::handlePacket() {
 	}
 	switch (id) {
 		case 0: //Player wanting to join a room
-		{
-			sf::Uint16 roomid;
-			packet >> roomid;
-			for (auto&& it : lobby.rooms)
-				if (it.id == roomid) {
-					bool alreadyin=false;
-					for (auto&& client : it.clients) //Make sure the client is not already in the room
-						if (client->id == sender->id)
-							alreadyin=true;
-					if (alreadyin)
-						break;
-					if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (sender->sdataInit || sender->guest)) {
-						sendPacket3(it, 1);
-						sendPacket4(it);
-						it.join(*sender);
-					}
-					else if (sender->sdataInit || sender->guest)
-						sendPacket3(it, 2);
-					else
-						sendPacket3(it, 3);
-				}
-		}
+			lobby.joinRequest();
 		break;
 		case 1: //Player left a room
 			sender->room->leave(*sender);
@@ -267,7 +247,7 @@ void Connections::handlePacket() {
 			if (sender->room != nullptr) {
 				if (sender->away == false) {
 					sender->room->activePlayers--;
-					if (sender->room->activePlayers == 0)
+					if (sender->room->activePlayers < 2)
 						sender->room->setInactive();
 				}
 				sender->away=true;
@@ -279,9 +259,8 @@ void Connections::handlePacket() {
 			if (sender->away)
 				if (sender->room != nullptr) {
 					sender->room->activePlayers++;
-					if (sender->room->activePlayers == 2)
-						sender->room->endround=true;
-					sender->room->setActive();
+					if (sender->room->activePlayers > 1)
+						sender->room->setActive();
 				}
 			sender->away=false;
 			sendPacket14();
@@ -305,6 +284,34 @@ void Connections::handlePacket() {
 			packet >> name >> max;
 			lobby.addRoom(name, max, 3, 3);
 		}
+		break;
+		case 12: // Player is ready
+			if (!sender->ready && !sender->alive)
+				sendPacket25();
+			sender->ready=true;
+		break;
+		case 13: // Player is not ready
+			if (sender->ready && !sender->alive)
+				sendPacket26();
+			sender->ready=false;
+		break;
+		case 14: // Player signed up for tournament
+			lobby.signUpForTournament(*sender);
+		break;
+		case 15: // Players withdrew from tournament
+			lobby.withdrawFromTournament(*sender);
+		break;
+		case 16: // Player close sign-up for a tournament
+			lobby.closeSignUp();
+		break;
+		case 17: // Players started tournament
+			lobby.startTournament(*sender);
+		break;
+		case 18: // Player wants to join a tournament game
+			lobby.joinTournamentGame();
+		break;
+		case 19: // Players closes tournament panel
+			lobby.removeTournamentObserver();
 		break;
 		case 99: // UDP packet to show server the right port
 		{
@@ -338,18 +345,25 @@ void Connections::handlePacket() {
 			}
 		}
 		break;
-		case 102:
+		case 102: // Ping packet
 			sendPacket102();
 		break;
 	}
 }
 
 void Connections::manageRooms() {
-	for (auto&& it : lobby.rooms) {
-		if (it.active) {
-			it.sendGameData();
-			it.makeCountdown();
-			it.checkIfRoundEnded();
+	for (auto&& room : lobby.rooms) {
+		if (room.active) {
+			room.sendGameData();
+			room.makeCountdown();
+			room.checkIfRoundEnded();
+		}
+	}
+	for (auto&& room : lobby.tmp_rooms) {
+		if (room.active) {
+			room.sendGameData();
+			room.makeCountdown();
+			room.checkIfRoundEnded();
 		}
 	}
 	lobby.removeIdleRooms();

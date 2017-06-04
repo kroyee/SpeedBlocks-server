@@ -187,6 +187,7 @@ void Connections::sendPacket15(Client& client) {
 
 //Send room list
 void Connections::sendPacket16(Client& client) {
+	packet.clear();
 	sf::Uint8 packetid = 16;
 	packet << packetid << lobby.roomCount;
 	for (auto&& room : lobby.rooms) {
@@ -241,6 +242,64 @@ void Connections::sendPacket21(Client& client) {
 			send(otherClient);
 }
 
+//Send Tournament list
+void Connections::sendPacket22(Client& client) {
+	packet.clear();
+	sf::Uint8 packetid = 22;
+	packet << packetid << lobby.tournamentCount;
+	for (auto&& tournament : lobby.tournaments) {
+		packet << tournament.id << tournament.name << tournament.status << tournament.players;
+	}
+	send(client);
+}
+
+//Send Tournament info
+void Connections::sendPacket23(Tournament& tournament) {
+	tournament.sendTournament();
+	send(*sender);
+}
+
+//Send Tournament game score
+void Connections::sendPacket24(Node& game) {
+	packet.clear();
+	sf::Uint8 packetid = 24;
+	packet << packetid << game.player1->id << game.player2->id << game.result.p1_sets << game.result.p2_sets;
+	if (game.status == 4)
+		packet << (sf::Uint8)255;
+	else if (game.result.p1_rounds.size() > game.activeSet)
+		packet << game.result.p1_rounds[game.activeSet];
+	else
+		packet << (sf::Uint8)0;
+
+
+	if (game.result.p2_rounds.size() > game.activeSet)
+		packet << game.result.p2_rounds[game.activeSet];
+	else
+		packet << (sf::Uint8)0;
+
+	if (game.room != nullptr)
+		send(*game.room);
+}
+
+//Player is ready
+void Connections::sendPacket25() {
+	packet.clear();
+	sf::Uint8 packetid = 25;
+	packet << packetid << sender->id;
+	send(*sender->room);
+}
+
+//Player is not ready
+void Connections::sendPacket26() {
+	packet.clear();
+	sf::Uint8 packetid = 26;
+	packet << packetid << sender->id;
+	send(*sender->room);
+}
+
+// sendPacket27 = sendTournament partial information
+
+//Reply to ping packet
 void Connections::sendPacket102() {
 	sendUDP(*sender);
 }
