@@ -19,7 +19,7 @@ void Client::authUser() {
         	name = authresponse.substring(c+1, 100);
         	authresponse = authresponse.substring(0, c);
         	std::cout << "Auth successfull: " << id << " -> ";
-			id = stoi(authpass.toAnsiString());
+			id = stoi(authresponse.toAnsiString());
 			std::cout << id << std::endl;
         	authresult=1;
         }

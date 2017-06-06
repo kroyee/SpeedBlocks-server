@@ -174,6 +174,7 @@ void Connections::handlePacket() {
 			if (version != clientVersion) {
 				sendPacket9(3, *sender);
 				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
+				sender->guest=true;
 			}
 			else if (guest) {
 				sendPacket9(2, *sender);

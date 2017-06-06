@@ -29,7 +29,6 @@ public:
 	Connections* conn;
 
 	sf::String name;
-	sf::String authpass;
 	sf::Uint8 authresult;
 
 	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataInit, sdataPut, away, ready;
