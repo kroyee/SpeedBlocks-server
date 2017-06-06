@@ -135,7 +135,7 @@ void Lobby::setMsg(const sf::String& msg) {
 
 void Lobby::addTournament(const sf::String& name, sf::Uint16 _mod_id) {
 	Tournament newTournament(*conn);
-	newTournament.rounds = 3;
+	newTournament.rounds = 11;
 	newTournament.sets = 1;
 	newTournament.status = 0;
 	newTournament.id = tourn_idcount;
@@ -146,6 +146,14 @@ void Lobby::addTournament(const sf::String& name, sf::Uint16 _mod_id) {
 		tourn_idcount = 40000;
 	tournamentCount++;
 	tournaments.push_back(newTournament);
+}
+
+void Lobby::removeTournament(sf::Uint16 id) {
+	for (auto it = tournaments.begin(); it != tournaments.end(); it++)
+		if (it->id == id) {
+			tournaments.erase(it);
+			break;
+		}
 }
 
 void Lobby::sendTournamentList(Client& client) {
@@ -185,6 +193,10 @@ void Lobby::closeSignUp() {
 			for (auto&& mod : tournament.moderator_list)
 				if (mod == conn->sender->id)
 					if (tournament.status == 0) {
+						if (tournament.players < 3) {
+							conn->sendSignal(*conn->sender, 0);
+							return;
+						}
 						tournament.makeBracket();
 						tournament.putPlayersInBracket();
 						tournament.status = 1;
@@ -194,23 +206,19 @@ void Lobby::closeSignUp() {
 		}
 }
 
-void Lobby::startTournament(Client&) {
+void Lobby::startTournament() {
 	sf::Uint16 id;
 	conn->packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id) {
 			for (auto&& mod : tournament.moderator_list)
 				if (mod == conn->sender->id) {
-					if (tournament.status == 0) {
-						tournament.makeBracket();
-						tournament.putPlayersInBracket();
-						tournament.status = 2;
-						tournament.sendGames();
+					if (tournament.players < 3) {
+						conn->sendSignal(*conn->sender, 0);
+						return;
 					}
-					else if (tournament.status == 1) {
-						tournament.status = 2;
-						tournament.sendStatus();
-					}
+					else
+						tournament.startTournament();
 				}
 			return;
 		}
@@ -226,4 +234,61 @@ void Lobby::removeTournamentObserver() {
 					tournament.keepUpdated.erase(it);
 					return;
 				}
+}
+
+void Lobby::createTournament() {
+	Tournament newTournament(*conn);
+	conn->packet >> newTournament.name >> newTournament.sets >> newTournament.rounds;
+	newTournament.status = 0;
+	newTournament.id = tourn_idcount;
+	newTournament.moderator_list.push_back(conn->sender->id);
+	tourn_idcount++;
+	if (tourn_idcount >= 50000)
+		tourn_idcount = 40000;
+	tournamentCount++;
+	tournaments.push_back(newTournament);
+}
+
+void Lobby::dailyTournament() {
+	if (daily == nullptr) {
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		sf::String name;
+		switch (nowtm->tm_wday) {
+			case 0:
+				name = "Sunday ";
+			break;
+			case 1:
+				name = "Monday ";
+			break;
+			case 2:
+				name = "Tuesday ";
+			break;
+			case 3:
+				name = "Wednesday ";
+			break;
+			case 4:
+				name = "Thursday ";
+			break;
+			case 5:
+				name = "Friday ";
+			break;
+			case 6:
+				name = "Saturday ";
+			break;
+		}
+		name += "showdown";
+		addTournament(name, 0);
+		tournaments.back().setStartingTime(0, 18, 0);
+		daily = &tournaments.back();
+	}
+	else {
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		struct tm* tournamenttm = gmtime(&daily->startingTime);
+		if (nowtm->tm_wday != tournamenttm->tm_wday) {
+			removeTournament(daily->id);
+			daily = nullptr;
+		}
+	}
 }

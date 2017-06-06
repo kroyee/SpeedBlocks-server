@@ -23,20 +23,22 @@ int main() {
 	srand(time(NULL));
 
 	Connections conn;
+
+	if (!conn.getKey()) {
+		cout << "Failed to get serverkey" << endl;
+		return 1;
+	}
+
 	if (!conn.setUpListener())
 		return 1;
 
 	std::thread t(&getInput);
 
-	std::cout << "Listener set up" << std::endl;
+	cout << "Listener set up" << endl;
 
 	conn.lobby.addRoom("Standard", 0, 1, 3);
 	conn.lobby.idcount=1;
 	conn.lobby.addRoom("Fast and Furious", 5, 3, 3);
-
-	conn.lobby.addTournament("Monday Showdown", 60000);
-	for (int i=0; i<10; i++)
-		conn.lobby.tournaments.back().addPlayer("Dude " + to_string(i), i);
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
 
@@ -47,12 +49,13 @@ int main() {
 
 		conn.manageRooms();
 		conn.manageClients();
+		conn.manageTournaments();
 		if (status) {
 			for (auto&& client : conn.clients) {
-				std::cout << client.id << ": " << client.name.toAnsiString();
+				cout << client.id << ": " << client.name.toAnsiString();
 				if (client.room != nullptr)
-					std::cout << " in room " << client.room->name.toAnsiString();
-				std::cout << std::endl;
+					cout << " in room " << client.room->name.toAnsiString();
+				cout << endl;
 			}
 			status=false;
 		}

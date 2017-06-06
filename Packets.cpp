@@ -303,3 +303,13 @@ void Connections::sendPacket26() {
 void Connections::sendPacket102() {
 	sendUDP(*sender);
 }
+
+//////////////////////////////////////////////////////////////////////
+//																	//
+//						Signal list 								//
+//																	//
+//////////////////////////////////////////////////////////////////////
+
+// 0 - Not enough players to start tournament
+
+// 1 - A tournament game is ready for you, id1=tournamentId, id2=gameId

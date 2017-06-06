@@ -1,5 +1,6 @@
 #include "Connections.h"
 #include <string>
+#include <fstream>
 #include "MingwConvert.h"
 using std::cout;
 using std::endl;
@@ -29,7 +30,7 @@ bool Connections::receive() {
 		if (listener.accept(clients.back().socket) == sf::Socket::Done) {
 			std::cout << "Client accepted: " << idcount-1  << std::endl;
 			clients.back().address = clients.back().socket.getRemoteAddress();
-			clients.back().lastHeardFrom = uploadClock.getElapsedTime();
+			clients.back().lastHeardFrom = serverClock.getElapsedTime();
 			selector.add(clients.back().socket);
 			clientCount++;
 			sendPacket0();
@@ -55,7 +56,7 @@ bool Connections::receive() {
 			status = it->socket.receive(packet);
 			if (status == sf::Socket::Done) {
 				sender = &(*it);
-				sender->lastHeardFrom = uploadClock.getElapsedTime();
+				sender->lastHeardFrom = serverClock.getElapsedTime();
 				return true;
 			}
 			else if (status == sf::Socket::Disconnected) {
@@ -70,7 +71,7 @@ void Connections::disconnectClient(Client& client) {
 	sendPacket21(client);
 	if (!client.guest) {
 		uploadData.push_back(client);
-		uploadData.back().uploadTime = uploadClock.getElapsedTime() + sf::seconds(0);
+		uploadData.back().uploadTime = serverClock.getElapsedTime() + sf::seconds(0);
 	}
 	if (client.room != nullptr)
 		client.room->leave(client);
@@ -127,11 +128,23 @@ void Connections::sendUDP(Client& client) {
 		std::cout << "Error sending UDP packet to " << (int)client.id << std::endl;
 }
 
+void Connections::sendSignal(Client& client, sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+	packet.clear();
+	packet << (sf::Uint8)254 << signalId;
+	if (id1)
+		packet << id1;
+	if (id2)
+		packet << id2;
+	status = client.socket.send(packet);
+	if (status != sf::Socket::Done)
+		std::cout << "Error sending Signal packet to " << (int)client.id << std::endl;
+}
+
 void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
 		std::cout << "Packet id: " << (int)id << std::endl;
-	else {
+	else if (id != 254) {
 		sf::Uint16 clientid;
 		packet >> clientid;
 		bool valid=false;
@@ -139,7 +152,7 @@ void Connections::handlePacket() {
 			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPort) {
 				sender = &client;
 				valid=true;
-				sender->lastHeardFrom = uploadClock.getElapsedTime();
+				sender->lastHeardFrom = serverClock.getElapsedTime();
 				break;
 			}
 		if (!valid)
@@ -150,14 +163,14 @@ void Connections::handlePacket() {
 			lobby.joinRequest();
 		break;
 		case 1: //Player left a room
-			sender->room->leave(*sender);
+			//Moved to signal
 		break;
 		case 2: //Players authing
 		{
 			sf::String name, pass;
 			sf::Uint8 guest;
 			sf::Uint16 version;
-			packet >> version >> guest >> sender->name >> sender->authpass;
+			packet >> version >> guest >> sender->name;
 			if (version != clientVersion) {
 				sendPacket9(3, *sender);
 				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
@@ -305,13 +318,19 @@ void Connections::handlePacket() {
 			lobby.closeSignUp();
 		break;
 		case 17: // Players started tournament
-			lobby.startTournament(*sender);
+			lobby.startTournament();
 		break;
 		case 18: // Player wants to join a tournament game
 			lobby.joinTournamentGame();
 		break;
 		case 19: // Players closes tournament panel
 			lobby.removeTournamentObserver();
+		break;
+		case 20: // Player requested new tournament list
+			lobby.sendTournamentList(*sender);
+		break;
+		case 21:
+			lobby.createTournament();
 		break;
 		case 99: // UDP packet to show server the right port
 		{
@@ -348,6 +367,19 @@ void Connections::handlePacket() {
 		case 102: // Ping packet
 			sendPacket102();
 		break;
+		case 254: // Signal packet
+			handleSignal();
+		break;
+	}
+}
+
+void Connections::handleSignal() {
+	sf::Uint8 signalId;
+	packet >> signalId;
+	switch (signalId) {
+		case 1:
+			sender->room->leave(*sender);
+		break;
 	}
 }
 
@@ -371,7 +403,7 @@ void Connections::manageRooms() {
 
 void Connections::manageClients() {
 	for (auto it = clients.begin(); it != clients.end();  it++) {
-		if (uploadClock.getElapsedTime() - it->lastHeardFrom > sf::seconds(10)) {
+		if (serverClock.getElapsedTime() - it->lastHeardFrom > sf::seconds(10)) {
 			disconnectClient(*it);
 			it = clients.erase(it);
 			continue;
@@ -386,7 +418,7 @@ void Connections::manageClients() {
 
 void Connections::manageUploadData() {
 	for (auto it = uploadData.begin(); it != uploadData.end(); it++) {
-		if (uploadClock.getElapsedTime() > it->uploadTime) {
+		if (serverClock.getElapsedTime() > it->uploadTime) {
 			it->sdataPut=true;
 			it->thread = std::thread(&Client::sendData, &(*it));
 			it->uploadTime = it->uploadTime + sf::seconds(1000);
@@ -408,4 +440,24 @@ void Connections::manageUploadData() {
 			}
 		}
 	}
+}
+
+void Connections::manageTournaments() {
+	for (auto&& tournament : lobby.tournaments) {
+		tournament.checkIfStart();
+		tournament.checkWaitTime();
+	}
+	lobby.dailyTournament();
+}
+
+bool Connections::getKey() {
+	std::string line;
+	std::ifstream file ("key");
+
+	if (file.is_open()) {
+		getline(file, line);
+		serverkey = line;
+		return true;
+	}
+	return false;
 }

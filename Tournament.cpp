@@ -28,9 +28,8 @@ bool Node::p1won() {
 		result.p1_sets++;
 		activeSet++;
 		if (activeSet == sets) {
-			status = 4;
-			sendResults();
 			decideGame();
+			sendResults();
 			return true;
 		}
 	}
@@ -50,8 +49,6 @@ bool Node::p2won() {
 		result.p2_sets++;
 		activeSet++;
 		if (activeSet == sets) {
-			status = 4;
-			sendResults();
 			decideGame();
 			return true;
 		}
@@ -61,12 +58,38 @@ bool Node::p2won() {
 	return false;
 }
 
+void Node::winByWO(sf::Uint8 player) {
+	result.p1_rounds.clear();
+	result.p2_rounds.clear();
+	sf::Uint8 score=0;
+	result.p1_rounds.push_back(score);
+	result.p2_rounds.push_back(score);
+	if (player == 1) {
+		result.p1_sets=1;
+		result.p2_sets=0;
+	}
+	else {
+		result.p2_sets=1;
+		result.p1_sets=0;
+	}
+	decideGame();
+}
+
 void Node::decideGame() {
+	status = 4;
+	if (result.p1_sets == result.p2_sets) {
+		status = 3;
+		sendResults();
+		return;
+	}
+	sendResults();
+
 	if (nextgame == nullptr) {
 		tournament.status = 3;
 		tournament.sendStatus();
 		return;
 	}
+	
 	if (result.p1_sets > result.p2_sets) {
 		if (nextgame->p1game->id == id)
 			nextgame->player1 = player1;
@@ -79,9 +102,13 @@ void Node::decideGame() {
 		else
 			nextgame->player2 = player2;
 	}
+	
 	if (nextgame->player1 != nullptr && nextgame->player2 != nullptr) {
 		nextgame->status = 2;
 		nextgame->sendResults();
+		nextgame->sendReadyAlert();
+		nextgame->player1->waitingTime = sf::seconds(0);
+		nextgame->player2->waitingTime = sf::seconds(0);
 	}
 }
 
@@ -113,6 +140,14 @@ void Node::sendResults(bool asPart) {
 		tournament.sendToTournamentObservers();
 }
 
+void Node::sendReadyAlert() {
+	if (player1 == nullptr || player2 == nullptr)
+		return;
+	for (auto&& client : tournament.conn.clients)
+		if (client.id == player1->id || client.id == player2->id)
+			tournament.conn.sendSignal(client, 1, tournament.id);
+}
+
 Bracket::Bracket() : players(0), depth(0), gameCount(0), idCount(1) {}
 
 void Bracket::clear() {
@@ -135,7 +170,13 @@ void Bracket::addGame(short _depth, Tournament& tournament) {
 	gameCount++;
 }
 
-Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), status(0) {}
+void Bracket::sendAllReadyAlerts() {
+	for (auto&& game : games)
+		if (game.status == 2)
+			game.sendReadyAlert();
+}
+
+Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0) {}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -176,6 +217,15 @@ void Tournament::addObserver(Client& client) {
 		if (observer->id == client.id)
 			return;
 	keepUpdated.push_back(&client);
+}
+
+void Tournament::setStartingTime(sf::Uint8 days, sf::Uint8 hours, sf::Uint8 minutes) {
+	time_t timetostart = time(NULL);
+	timetostart -= timetostart % 86400;
+	timetostart += 86400*days;
+	timetostart += 3600*hours;
+	timetostart += 60*minutes;
+	startingTime = timetostart;
 }
 
 void Tournament::makeBracket() {
@@ -220,29 +270,6 @@ void Tournament::linkGames(Node& game1, Node& game2) {
 }
 
 void Tournament::putPlayersInBracket() {
-	/*bool slotfound;
-	for (auto&& player : participants) {
-		slotfound=false;
-		for (auto&& game : bracket.games)
-			if (game.depth == bracket.depth) {
-				if (game.player1 == nullptr) {
-					game.player1 = &player;
-					slotfound=true;
-					break;
-				}
-			}
-		if (slotfound)
-			continue;
-		for (auto&& game : bracket.games)
-			if (game.depth == bracket.depth) {
-				if (game.player2 == nullptr) {
-					game.player2 = &player;
-					break;
-				}
-			}
-	}*/
-
-
 	int amountinrow = 1*pow(2, bracket.depth-1);
 	int start = bracket.games.size()-amountinrow;
 	int step = amountinrow/2.0;
@@ -339,7 +366,7 @@ void Tournament::sendTournament() {
 	sf::Uint8 packetid = 23;
 	conn.packet << packetid;
 
-	conn.packet << id << rounds << sets;
+	conn.packet << id << rounds << sets << (double)startingTime;
 
 	sendParticipantList(true);
 	sendModeratorList(true);
@@ -423,4 +450,53 @@ void Tournament::sendToTournamentObservers() {
 		if (conn.status != sf::Socket::Done)
 			cout << "Error sending TCP packet to tournament observer " << id << endl;
 	}
+}
+
+void Tournament::startTournament() {
+	for (auto&& player : participants)
+		player.waitingTime = sf::seconds(0);
+	if (status == 0) {
+		if (players < 3) {
+			status = 5;
+			sendStatus();
+			return;
+		}
+		makeBracket();
+		putPlayersInBracket();
+		status = 2;
+		sendGames();
+		bracket.sendAllReadyAlerts();
+	}
+	else if (status == 1) {
+		status = 2;
+		sendStatus();
+		bracket.sendAllReadyAlerts();
+	}
+}
+
+void Tournament::checkIfStart() {
+	if (status < 2)
+		if (startingTime)
+			if (time(NULL) > startingTime)
+				startTournament();
+}
+
+void Tournament::checkWaitTime() {
+	if (status == 2)
+		for (auto&& game : bracket.games)
+			if (game.status == 2 || game.status == 3)
+				if (game.room != nullptr)
+					if (game.room->currentPlayers == 1) {
+						if (game.room->clients.front()->id == game.player1->id) {
+							game.player1->waitingTime += conn.serverClock.getElapsedTime() - waitingTime;
+							if (game.player1->waitingTime.asSeconds() > 300)
+								game.winByWO(1);
+						}
+						else {
+							game.player2->waitingTime += conn.serverClock.getElapsedTime() - waitingTime;
+							if (game.player2->waitingTime.asSeconds() > 300)
+								game.winByWO(2);
+						}
+					}
+	waitingTime = conn.serverClock.getElapsedTime();
 }

@@ -9,7 +9,7 @@ class Connections;
 
 class Lobby {
 public:
-	Lobby(Connections* _conn) : conn(_conn), roomCount(0), tournamentCount(0), idcount(0), tourn_idcount(40000), tmp_idcount(50000) {}
+	Lobby(Connections* _conn) : conn(_conn), roomCount(0), tournamentCount(0), idcount(0), tourn_idcount(40000), tmp_idcount(50000), daily(nullptr) {}
 	Connections* conn;
 	sf::String welcomeMsg;
 
@@ -18,6 +18,8 @@ public:
 	std::list<Tournament> tournaments;
 	sf::Uint8 roomCount, tournamentCount;
 	sf::Uint16 idcount, tourn_idcount, tmp_idcount;
+
+	Tournament* daily;
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
@@ -32,12 +34,15 @@ public:
 	void sendRoomList(Client&);
 
 	void addTournament(const sf::String& name, sf::Uint16 _mod_id);
+	void removeTournament(sf::Uint16 id);
 	void sendTournamentList(Client&);
 	void signUpForTournament(Client&);
 	void withdrawFromTournament(Client&);
 	void closeSignUp();
-	void startTournament(Client&);
+	void startTournament();
 	void removeTournamentObserver();
+	void createTournament();
+	void dailyTournament();
 };
 
 #endif

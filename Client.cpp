@@ -3,9 +3,9 @@
 
 void Client::authUser() {
 	std::cout << "Authing user..." << std::endl;
-	sf::Http::Request request("/auth.php", sf::Http::Request::Post);
+	sf::Http::Request request("/hash_check.php", sf::Http::Request::Post);
 
-    sf::String stream = "name=" + name + "&pass=" + authpass;
+    sf::String stream = "hash=" + name;
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
@@ -14,11 +14,13 @@ void Client::authUser() {
 
     if (response.getStatus() == sf::Http::Response::Ok) {
         if (response.getBody() != "Failed") {
-        	authpass = response.getBody();
-        	short c = authpass.find('%');
-        	name = authpass.substring(c+1, 100);
-        	authpass = authpass.substring(0, c);
-        	std::cout << "Auth successfull " << std::endl;
+        	sf::String authresponse = response.getBody();
+        	short c = authresponse.find('%');
+        	name = authresponse.substring(c+1, 100);
+        	authresponse = authresponse.substring(0, c);
+        	std::cout << "Auth successfull: " << id << " -> ";
+			id = stoi(authpass.toAnsiString());
+			std::cout << id << std::endl;
         	authresult=1;
         }
         else {
@@ -46,6 +48,7 @@ void Client::sendData() {
     stream += "&gameswon="+to_string(s_gamesWon)+"&rank="+to_string(s_rank)+"&points="+to_string(s_points+1000);
     stream += "&heropoints="+to_string(s_heropoints)+"&totalbpm="+to_string(s_totalBpm);
     stream += "&totalgamesplayed="+to_string(s_totalGames)+"&herorank="+to_string(s_herorank);
+    stream += "&serverkey="+conn->serverkey;
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
@@ -176,9 +179,6 @@ void Client::checkIfAuth() {
 		if (thread.joinable()) {
 			thread.join();
 			if (authresult==1) {
-				std::cout << "Client: " << id << " -> ";
-				id = stoi(authpass.toAnsiString());
-				std::cout << id << std::endl;
 				conn->sendPacket9(1, *this);
 				guest=false;
 				bool copyfound=false;

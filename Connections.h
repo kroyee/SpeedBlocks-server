@@ -24,8 +24,9 @@ public:
 	sf::SocketSelector selector;
 	sf::UdpSocket udpSock;
 	sf::Socket::Status status;
+	sf::String serverkey;
 
-	sf::Clock uploadClock;
+	sf::Clock serverClock;
 
 	Client* sender;
 
@@ -49,12 +50,17 @@ public:
 	void send(Room&);
 	void send(Room&, short);
 	void sendUDP(Client& client);
+	void sendSignal(Client& client, sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
 
 	void manageRooms();
 	void manageClients();
 	void manageUploadData();
+	void manageTournaments();
 
 	void handlePacket();
+	void handleSignal();
+
+	bool getKey();
 
 	//Send packet functions
 	void sendPacket0();

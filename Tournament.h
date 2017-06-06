@@ -24,6 +24,8 @@ public:
 	Participant();
 	sf::Uint16 id;
 	sf::String name;
+	sf::Time waitingTime;
+	bool waiting;
 };
 
 class Node {
@@ -41,8 +43,10 @@ public:
 
 	bool p1won();
 	bool p2won();
+	void winByWO(sf::Uint8 player);
 	void sendResults(bool asPart=false);
 	void decideGame();
+	void sendReadyAlert();
 };
 
 class Bracket {
@@ -56,6 +60,7 @@ public:
 
 	void clear();
 	void addGame(short _depth, Tournament& tournament);
+	void sendAllReadyAlerts();
 };
 
 class Tournament {
@@ -70,6 +75,7 @@ public:
 	time_t startingTime;
 	std::vector<sf::Uint16> moderator_list;
 	sf::Uint8 status;
+	sf::Time waitingTime;
 
 	sf::String name;
 	sf::Uint16 id;
@@ -78,6 +84,7 @@ public:
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
 	bool removePlayer(sf::Uint16 id);
 	void addObserver(Client& client);
+	void setStartingTime(sf::Uint8 days, sf::Uint8 hours, sf::Uint8 minutes);
 
 	void makeBracket();
 	void linkGames(Node& game1, Node& game2);
@@ -92,6 +99,11 @@ public:
 	void sendGames(bool asPart=false);
 
 	void sendToTournamentObservers();
+
+	void startTournament();
+
+	void checkIfStart();
+	void checkWaitTime();
 };
 
 #endif
