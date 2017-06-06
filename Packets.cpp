@@ -313,3 +313,5 @@ void Connections::sendPacket102() {
 // 0 - Not enough players to start tournament
 
 // 1 - A tournament game is ready for you, id1=tournamentId, id2=gameId
+
+// 2 - You can't do that as guest

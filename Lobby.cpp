@@ -161,6 +161,10 @@ void Lobby::sendTournamentList(Client& client) {
 }
 
 void Lobby::signUpForTournament(Client& client) {
+	if (client.id >= 60000) {
+		conn->sendSignal(client, 2);
+		return;
+	}
 	sf::Uint16 id;
 	conn->packet >> id;
 	for (auto&& tournament : tournaments)
@@ -237,6 +241,10 @@ void Lobby::removeTournamentObserver() {
 }
 
 void Lobby::createTournament() {
+	if (conn->sender->id >= 60000) {
+		conn->sendSignal(*conn->sender, 2);
+		return;
+	}
 	Tournament newTournament(*conn);
 	conn->packet >> newTournament.name >> newTournament.sets >> newTournament.rounds;
 	newTournament.status = 0;

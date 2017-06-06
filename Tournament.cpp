@@ -457,7 +457,7 @@ void Tournament::startTournament() {
 		player.waitingTime = sf::seconds(0);
 	if (status == 0) {
 		if (players < 3) {
-			status = 5;
+			status = 4;
 			sendStatus();
 			return;
 		}

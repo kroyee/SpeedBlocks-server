@@ -330,7 +330,7 @@ void Connections::handlePacket() {
 		case 20: // Player requested new tournament list
 			lobby.sendTournamentList(*sender);
 		break;
-		case 21:
+		case 21: // Player created a new tournament
 			lobby.createTournament();
 		break;
 		case 99: // UDP packet to show server the right port
