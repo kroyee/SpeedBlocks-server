@@ -25,7 +25,7 @@ public:
 	sf::Uint16 id;
 	sf::String name;
 	sf::Time waitingTime;
-	bool waiting;
+	sf::Uint16 sentWaitingTime;
 };
 
 class Node {
@@ -45,8 +45,11 @@ public:
 	bool p2won();
 	void winByWO(sf::Uint8 player);
 	void sendResults(bool asPart=false);
+	void sendScore();
 	void decideGame();
 	void sendReadyAlert();
+	void sendWaitTime(sf::Uint16 waitTime, sf::Uint8 player);
+	void resetWaitTimeSent();
 };
 
 class Bracket {
@@ -84,7 +87,8 @@ public:
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
 	bool removePlayer(sf::Uint16 id);
 	void addObserver(Client& client);
-	void setStartingTime(sf::Uint8 days, sf::Uint8 hours, sf::Uint8 minutes);
+	void removeObserver(Client& client);
+	void setStartingTime(short days, short hours, short minutes);
 
 	void makeBracket();
 	void linkGames(Node& game1, Node& game2);

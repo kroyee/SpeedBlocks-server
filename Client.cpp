@@ -146,7 +146,8 @@ void Client::copy(Client& client) {
 }
 
 Client::Client(const Client& client) {
-	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false;
+	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false; incLines=0;
+	tournament = nullptr;
 	
 	maxCombo = client.maxCombo; position = client.position;
 	linesSent = client.linesSent; linesReceived = client.linesReceived; linesBlocked = client.linesBlocked;
@@ -179,7 +180,7 @@ void Client::checkIfAuth() {
 		if (thread.joinable()) {
 			thread.join();
 			if (authresult==1) {
-				conn->sendPacket9(1, *this);
+				conn->sendAuthResult(1, *this);
 				guest=false;
 				bool copyfound=false;
 				for (auto it = conn->uploadData.begin(); it != conn->uploadData.end(); it++)
@@ -193,10 +194,10 @@ void Client::checkIfAuth() {
 				if (!copyfound)
 					thread = std::thread(&Client::getData, this);
 				authresult=0;
-				conn->sendPacket20(*this);
+				conn->sendClientJoinedServerInfo(*this);
 			}
 			else if (authresult==2) {
-				conn->sendPacket9(0, *this);
+				conn->sendAuthResult(0, *this);
 				authresult=0;
 			}
 			else {
@@ -214,6 +215,40 @@ void Client::sendLines() {
 			amount++;
 			incLines-=1.0f;
 		}
-		conn->sendPacket10(*this, amount);
+		sendSignal(9, amount);
 	}
+}
+
+void Client::goAway() {
+	if (room != nullptr) {
+		if (away == false) {
+			room->activePlayers--;
+			if (room->activePlayers < 2)
+				room->setInactive();
+		}
+		away=true;
+		room->sendSignal(11, id);
+	}
+}
+
+void Client::unAway() {
+	if (away)
+		if (room != nullptr) {
+			room->activePlayers++;
+			if (room->activePlayers > 1)
+				room->setActive();
+		}
+	away=false;
+	room->sendSignal(12, id);
+}
+
+void Client::sendSignal(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+	sf::Packet packet;
+	packet << (sf::Uint8)254 << signalId;
+	if (id1)
+		packet << id1;
+	if (id2)
+		packet << id2;
+	if (socket.send(packet) != sf::Socket::Done)
+		std::cout << "Error sending Signal packet to " << id << std::endl;
 }

@@ -23,6 +23,7 @@ public:
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
+	void sendJoinRoomResponse(Room& room, sf::Uint8 joinok);
 	void joinTournament(sf::Uint16 tournamentid);
 	void joinTournamentGame();
 	bool alreadyInside(const Room&, const Client&);

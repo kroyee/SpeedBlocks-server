@@ -36,8 +36,8 @@ void Room::startCountdown() {
 	start.restart();
 	seed1 = rand();
 	seed2 = rand();
-	conn->sendPacket1(*this, countdown);
-	conn->sendPacket11(*this);
+	sendSignalToActive(4, seed1, seed2);
+	sendSignalToAway(10, seed1, seed2);
 }
 
 void Room::transfearScore() {
@@ -73,13 +73,9 @@ void Room::endRound() {
 	round=false;
 	countdown=0;
 	roundLenght = start.restart();
-	activePlayers = currentPlayers;
-	for (auto&& client : clients) {
+	for (auto&& client : clients)
 		client->ready=false;
-		if (client->away)
-			activePlayers--;
-	}
-	conn->sendPacket6(*this);
+	sendSignal(7);
 }
 
 void Room::join(Client& jClient) {
@@ -122,9 +118,42 @@ void Room::leave(Client& lClient) {
 			lClient.room = nullptr;
 			std::cout << lClient.id << " left room " << id << std::endl;
 
-			conn->sendPacket5(*this, lClient.id);
+			sendSignal(6, lClient.id);
+
+			if (gamemode == 4)
+				if (tournamentGame != nullptr)
+					tournamentGame->resetWaitTimeSent();
 			break;
 		}
+}
+
+void Room::sendNewPlayerInfo() {
+	conn->packet.clear();
+	sf::Uint8 packetid = 4;
+	conn->packet << packetid << conn->sender->id << conn->sender->name;
+	conn->send(*this);
+}
+
+//Sorting function
+bool sortClient(Client* client1, Client* client2) {
+	return client1->score > client2->score;
+}
+void Room::sendRoundScores() {
+	conn->packet.clear();
+	sf::Uint8 packetid = 8, count=0;
+	for (auto&& client : clients)
+		if (client->position)
+			count++;
+	conn->packet << packetid << count;
+	clients.sort(&sortClient);
+	for (auto&& client : clients) {
+		if (client->position) {
+			conn->packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
+			conn->packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
+			conn->packet << client->score << client->linesAdjusted;
+		}
+	}
+	conn->send(*this);
 }
 
 void Room::updatePlayerScore() {
@@ -217,7 +246,7 @@ void Room::scoreTournamentRound() {
 				if (tournamentGame->p2won())
 					active=false;
 			}
-			conn->sendPacket24(*tournamentGame);
+			tournamentGame->sendScore();
 			return;
 		}
 }
@@ -247,6 +276,8 @@ void Room::setInactive() {
 		endround=true;
 		checkIfRoundEnded();
 	}
+	else
+		endRound();
 	round=false;
 	countdown=0;
 	start.restart();
@@ -277,7 +308,7 @@ void Room::makeCountdown() {
 			if (start.getElapsedTime() > sf::seconds(1)) {
 				countdown--;
 				start.restart();
-				conn->sendPacket2(*this, countdown);
+				sendSignalToActive(5, countdown);
 				if (countdown == 0)
 					startGame();
 			}
@@ -303,14 +334,14 @@ void Room::checkIfRoundEnded() {
 			for (auto&& winner : clients)
 				if (winner->alive) {
 					winner->position=1;
-					conn->sendPacket7(*this, winner);
+					winner->sendSignal(8);
 					nowinner=false;
 
-					conn->sendPacket15(*winner);
+					sendSignal(13, winner->id, winner->position);
 					break;
 				}
 			if (nowinner)
-				conn->sendPacket7(*this, nullptr);
+				sendSignal(8);
 			if (gamemode == 1)
 				scoreFFARound();
 			else if (gamemode == 4)
@@ -318,4 +349,73 @@ void Room::checkIfRoundEnded() {
 			endRound();
 		}
 	}
+}
+
+void Room::sendLines(Client& client) {
+	if (playersAlive == 1)
+		return;
+	sf::Uint16 amount;
+	conn->packet >> amount;
+	float lineAdjust=0, sending=amount, sent=client.linesSent, actualSend;
+	for (auto&& adj : adjust) {
+		if (sent>=adj.amount)
+			continue;
+		if (adj.amount-sent<sending) {
+			lineAdjust += (float)(adj.amount-sent) / (float)adj.players;
+			sent += (float)(adj.amount-sent) / (float)adj.players;
+			sending -= (float)(adj.amount-sent) / (float)adj.players;
+		}
+		else {
+			lineAdjust += sending / (float)adj.players;
+			sent += sending / (float)adj.players;
+			sending -= sending / (float)adj.players;
+		}
+	}
+	client.linesSent+=amount;
+	client.linesAdjusted+=lineAdjust;
+	actualSend=(float)amount-lineAdjust;
+	actualSend/= ((float)playersAlive-1.0);
+	std::cout << "amount: " << (int)amount << " adjust: " << lineAdjust << " players: " << (int)playersAlive << std::endl;
+	std::cout << "Sending " << actualSend << " to room from " << client.id << std::endl;
+	for (auto&& sendTo : clients)
+		if (sendTo->id != client.id && sendTo->alive)
+			sendTo->incLines+=actualSend;
+}
+
+void Room::sendSignal(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+	sf::Packet packet;
+	packet << (sf::Uint8)254 << signalId;
+	if (id1)
+		packet << id1;
+	if (id2)
+		packet << id2;
+	for (auto&& client : clients)
+		if (client->socket.send(packet) != sf::Socket::Done)
+			std::cout << "Error sending Signal packet to room" << id << std::endl;
+}
+
+void Room::sendSignalToAway(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+	sf::Packet packet;
+	packet << (sf::Uint8)254 << signalId;
+	if (id1)
+		packet << id1;
+	if (id2)
+		packet << id2;
+	for (auto&& client : clients)
+		if (client->away)
+			if (client->socket.send(packet) != sf::Socket::Done)
+				std::cout << "Error sending Signal packet to room" << id << std::endl;
+}
+
+void Room::sendSignalToActive(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+	sf::Packet packet;
+	packet << (sf::Uint8)254 << signalId;
+	if (id1)
+		packet << id1;
+	if (id2)
+		packet << id2;
+	for (auto&& client : clients)
+		if (!client->away)
+			if (client->socket.send(packet) != sf::Socket::Done)
+				std::cout << "Error sending Signal packet to room" << id << std::endl;
 }

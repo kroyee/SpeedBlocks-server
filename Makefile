@@ -1,7 +1,7 @@
 default: server
 
-server: main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o Packets.o Tournament.o
-	g++ -std=c++11 -Wall -Wextra -pedantic -pthread main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o Packets.o Tournament.o -o server -lsfml-network -lsfml-system
+server: main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o Tournament.o
+	g++ -std=c++11 -Wall -Wextra -pedantic -pthread main.o Connections.o Lobby.o Room.o Client.o PacketCompress.o MingwConvert.o Tournament.o -o server -lsfml-network -lsfml-system
 
 main.o: main.cpp Connections.h Lobby.h Room.h Client.h
 	g++ -std=c++11 -Wall -Wextra -pedantic -c main.cpp -o main.o
@@ -23,9 +23,6 @@ PacketCompress.o: PacketCompress.h PacketCompress.cpp
 
 MingwConvert.o: MingwConvert.h MingwConvert.cpp
 	g++ -std=c++11 -Wall -Wextra -pedantic -c MingwConvert.cpp -o MingwConvert.o
-
-Packets.o: Packets.cpp Connections.h Client.h Room.h Lobby.h
-	g++ -std=c++11 -Wall -Wextra -pedantic -c Packets.cpp -o Packets.o
 
 Tournament.o: Tournament.cpp Tournament.h
 	g++ -std=c++11 -Wall -Wextra -pedantic -c Tournament.cpp -o Tournament.o

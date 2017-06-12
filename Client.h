@@ -9,6 +9,7 @@
 
 class Room;
 class Connections;
+class Tournament;
 
 class PlayfieldHistory {
 public:
@@ -49,6 +50,8 @@ public:
 
 	std::list<PlayfieldHistory> history;
 
+	Tournament* tournament;
+
 	void sendData();
 	void getData();
 	int getDataInt(short, short, std::string&);
@@ -58,6 +61,10 @@ public:
 	void checkIfStatsSet();
 	void checkIfAuth();
 	void sendLines();
+	void goAway();
+	void unAway();
+
+	void sendSignal(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
 };
 
 #endif

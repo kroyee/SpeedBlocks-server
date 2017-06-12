@@ -36,11 +36,17 @@ int main() {
 
 	cout << "Listener set up" << endl;
 
-	conn.lobby.addRoom("Standard", 0, 1, 3);
 	conn.lobby.idcount=1;
+	conn.lobby.addRoom("Standard", 0, 1, 3);
+	conn.lobby.idcount=2;
 	conn.lobby.addRoom("Fast and Furious", 5, 3, 3);
+	conn.lobby.idcount=10;
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
+
+	conn.lobby.addTournament("Daily one", 0);
+	conn.lobby.tournaments.back().setStartingTime(0, 19, 30);
+	conn.lobby.daily = &conn.lobby.tournaments.back();
 
 	while (!quit) {
 		if (conn.listen())

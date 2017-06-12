@@ -33,7 +33,7 @@ bool Connections::receive() {
 			clients.back().lastHeardFrom = serverClock.getElapsedTime();
 			selector.add(clients.back().socket);
 			clientCount++;
-			sendPacket0();
+			sendWelcomeMsg();
 			lobby.sendTournamentList(clients.back());
 		}
 		else {
@@ -68,13 +68,15 @@ bool Connections::receive() {
 }
 
 void Connections::disconnectClient(Client& client) {
-	sendPacket21(client);
+	sendClientLeftServerInfo(client);
 	if (!client.guest) {
 		uploadData.push_back(client);
 		uploadData.back().uploadTime = serverClock.getElapsedTime() + sf::seconds(0);
 	}
 	if (client.room != nullptr)
 		client.room->leave(client);
+	if (client.tournament != nullptr)
+		client.tournament->removeObserver(client);
 	selector.remove(client.socket);
 	client.socket.disconnect();
 	std::cout << "Client " << client.id << " disconnected" << std::endl;
@@ -128,16 +130,96 @@ void Connections::sendUDP(Client& client) {
 		std::cout << "Error sending UDP packet to " << (int)client.id << std::endl;
 }
 
-void Connections::sendSignal(Client& client, sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+void Connections::sendSignal(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
 	packet.clear();
 	packet << (sf::Uint8)254 << signalId;
 	if (id1)
 		packet << id1;
 	if (id2)
 		packet << id2;
-	status = client.socket.send(packet);
-	if (status != sf::Socket::Done)
-		std::cout << "Error sending Signal packet to " << (int)client.id << std::endl;
+	for (auto&& client : clients) {
+		status = client.socket.send(packet);
+		if (status != sf::Socket::Done)
+			cout << "Error sending Signal packet to " << (int)client.id << endl;
+	}
+}
+
+void Connections::sendWelcomeMsg() {
+	packet.clear();
+	sf::Uint8 packetid = 0;
+	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
+	for (auto&& it : lobby.rooms)
+		packet << it.id << it.name << it.currentPlayers << it.maxPlayers;
+	sf::Uint16 adjusterClientCount = clientCount-1;
+	packet << adjusterClientCount;
+	for (auto&& client : clients)
+		packet << client.id << client.name;
+	send(clients.back());
+}
+
+void Connections::sendAuthResult(sf::Uint8 authresult, Client& client) {
+	packet.clear();
+	sf::Uint8 packetid = 9;
+	packet << packetid;
+	if (authresult == 2) {
+		for (auto&& client : clients) // Checking for duplicate names, and sending back 4 if found
+				if (client.id != sender->id && client.name == sender->name)
+					authresult=4;
+	}
+	packet << authresult;
+	if (authresult == 1) {
+		packet << client.name << client.id;
+	}
+	send(client);
+}
+
+void Connections::sendChatMsg() {
+	//Get msg
+	sf::Uint8 type;
+	sf::String to = "", msg;
+	packet >> type;
+	if (type == 3)
+		packet >> to;
+	packet >> msg;
+	//Send it out
+	packet.clear();
+	sf::Uint8 packetid = 12;
+	packet << packetid << type << sender->name << msg;
+	if (type == 1) {
+		for (auto&& client : sender->room->clients)
+			if (client->id != sender->id)
+				send(*client);
+	}
+	else if (type == 2) {
+		for (auto&& client : clients)
+			if (client.id != sender->id)
+				send(client);
+	}
+	else {
+		for (auto&& client : clients)
+			if (client.name == to) {
+				send(client);
+				break;
+			}
+	}
+}
+
+void Connections::sendClientJoinedServerInfo(Client& client) {
+	packet.clear();
+	sf::Uint8 packetid = 20;
+	packet << packetid << client.id << client.name;
+	for (auto&& otherClient : clients)
+		if (otherClient.id != client.id)
+			send(otherClient);
+}
+
+void Connections::sendClientLeftServerInfo(Client& client) { // MOVE
+	packet.clear();
+	sf::Uint8 packetid = 21;
+	packet << packetid << client.id;
+	for (auto&& otherClient : clients)
+		if (otherClient.id != client.id)
+			send(otherClient);
 }
 
 void Connections::handlePacket() {
@@ -159,12 +241,6 @@ void Connections::handlePacket() {
 			return;
 	}
 	switch (id) {
-		case 0: //Player wanting to join a room
-			lobby.joinRequest();
-		break;
-		case 1: //Player left a room
-			//Moved to signal
-		break;
 		case 2: //Players authing
 		{
 			sf::String name, pass;
@@ -172,16 +248,16 @@ void Connections::handlePacket() {
 			sf::Uint16 version;
 			packet >> version >> guest >> sender->name;
 			if (version != clientVersion) {
-				sendPacket9(3, *sender);
+				sendAuthResult(3, *sender);
 				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
 				sender->guest=true;
 			}
 			else if (guest) {
-				sendPacket9(2, *sender);
+				sendAuthResult(2, *sender);
 				sender->guest=true;
 				sender->s_rank=25;
 				std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
-				sendPacket20(*sender);
+				sendClientJoinedServerInfo(*sender);
 			}
 			else
 				sender->thread = std::thread(&Client::authUser, sender);
@@ -197,99 +273,22 @@ void Connections::handlePacket() {
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
 
-			sendPacket15(*sender);
+			sender->room->sendSignal(13, sender->id, sender->position);
 		}
 		break;
 		case 4: //Player won and sending round-data
 		{
 			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
 			packet >> sender->bpm >> sender->spm;
-			sendPacket8();
+			sender->room->sendRoundScores();
 			sender->room->updatePlayerScore();
 			sender->s_gamesWon++;
 			if (sender->bpm > sender->s_maxBpm && sender->room->roundLenght > sf::seconds(10))
 				sender->s_maxBpm = sender->bpm;
 		}
 		break;
-		case 5: //Player sent lines
-		{
-			if (sender->room->playersAlive == 1)
-				break;
-			sf::Uint8 amount;
-			packet >> amount;
-			float adjust=0, sending=amount, sent=sender->linesSent, actualSend;
-			for (auto&& adj : sender->room->adjust) {
-				if (sent>=adj.amount)
-					continue;
-				if (adj.amount-sent<sending) {
-					adjust += (float)(adj.amount-sent) / (float)adj.players;
-					sent += (float)(adj.amount-sent) / (float)adj.players;
-					sending -= (float)(adj.amount-sent) / (float)adj.players;
-				}
-				else {
-					adjust += sending / (float)adj.players;
-					sent += sending / (float)adj.players;
-					sending -= sending / (float)adj.players;
-				}
-			}
-			sender->linesSent+=amount;
-			sender->linesAdjusted+=adjust;
-			actualSend=(float)amount-adjust;
-			actualSend/= ((float)sender->room->playersAlive-1.0);
-			std::cout << "amount: " << (int)amount << " adjust: " << adjust << " players: " << (int)sender->room->playersAlive << std::endl;
-			std::cout << "Sending " << actualSend << " to room from " << sender->id << std::endl;
-			for (auto&& client : sender->room->clients)
-				if (client->id != sender->id && client->alive)
-					client->incLines+=actualSend;
-		}
-		break;
-		case 6: //Player cleared garbage
-		{
-			sf::Uint8 amount;
-			packet >> amount;
-			sender->garbageCleared+=amount;
-		}
-		break;
-		case 7: //Player blocked lines
-		{
-			sf::Uint8 amount;
-			packet >> amount;
-			sender->linesBlocked+=amount;
-		}
-		break;
-		case 8: //Player went away
-			if (sender->room != nullptr) {
-				if (sender->away == false) {
-					sender->room->activePlayers--;
-					if (sender->room->activePlayers < 2)
-						sender->room->setInactive();
-				}
-				sender->away=true;
-				sendPacket13();
-			}
-		break;
-		case 9: //Player came back
-		{
-			if (sender->away)
-				if (sender->room != nullptr) {
-					sender->room->activePlayers++;
-					if (sender->room->activePlayers > 1)
-						sender->room->setActive();
-				}
-			sender->away=false;
-			sendPacket14();
-		}
-		break;
 		case 10: // Chat msg
-		{
-			sf::Uint8 type;
-			sf::String to = "", msg;
-			packet >> type;
-			if (type == 3)
-				packet >> to;
-			packet >> msg;
-			sendPacket12(type, to, msg);
-		}
+			sendChatMsg();
 		break;
 		case 11: //Player creating a room
 		{
@@ -298,37 +297,6 @@ void Connections::handlePacket() {
 			packet >> name >> max;
 			lobby.addRoom(name, max, 3, 3);
 		}
-		break;
-		case 12: // Player is ready
-			if (!sender->ready && !sender->alive)
-				sendPacket25();
-			sender->ready=true;
-		break;
-		case 13: // Player is not ready
-			if (sender->ready && !sender->alive)
-				sendPacket26();
-			sender->ready=false;
-		break;
-		case 14: // Player signed up for tournament
-			lobby.signUpForTournament(*sender);
-		break;
-		case 15: // Players withdrew from tournament
-			lobby.withdrawFromTournament(*sender);
-		break;
-		case 16: // Player close sign-up for a tournament
-			lobby.closeSignUp();
-		break;
-		case 17: // Players started tournament
-			lobby.startTournament();
-		break;
-		case 18: // Player wants to join a tournament game
-			lobby.joinTournamentGame();
-		break;
-		case 19: // Players closes tournament panel
-			lobby.removeTournamentObserver();
-		break;
-		case 20: // Player requested new tournament list
-			lobby.sendTournamentList(*sender);
 		break;
 		case 21: // Player created a new tournament
 			lobby.createTournament();
@@ -341,7 +309,7 @@ void Connections::handlePacket() {
 				if (client.id == clientid) {
 					if (client.udpPort != udpPort)
 						client.udpPort = udpPort;
-					sendPacket19(client);
+					client.sendSignal(14);
 					cout << "Confirmed UDP port for " << sender->id << endl;
 				}
 		}
@@ -365,8 +333,8 @@ void Connections::handlePacket() {
 			}
 		}
 		break;
-		case 102: // Ping packet
-			sendPacket102();
+		case 102: // Ping packet - sending back same packet to client
+			sendUDP(*sender);
 		break;
 		case 254: // Signal packet
 			handleSignal();
@@ -378,8 +346,68 @@ void Connections::handleSignal() {
 	sf::Uint8 signalId;
 	packet >> signalId;
 	switch (signalId) {
-		case 1:
+		case 0: //Player wanting to join a room
+			lobby.joinRequest();
+		break;
+		case 1: //Player left a room
 			sender->room->leave(*sender);
+		break;
+		case 2: //Player sent lines
+			sender->room->sendLines(*sender);
+		break;
+		case 3: //Player cleared garbage
+		{
+			sf::Uint16 amount;
+			packet >> amount;
+			sender->garbageCleared+=amount;
+		}
+		break;
+		case 4: //Player blocked lines
+		{
+			sf::Uint16 amount;
+			packet >> amount;
+			sender->linesBlocked+=amount;
+		}
+		break;
+		case 5: //Player went away
+			sender->goAway();
+		break;
+		case 6: //Player came back
+			sender->unAway();
+		break;
+		case 7: // Player is ready
+			if (!sender->ready && !sender->alive && sender->room != nullptr)
+				sender->room->sendSignal(15, sender->id);
+			sender->ready=true;
+		break;
+		case 8: // Player is not ready
+			if (sender->ready && !sender->alive && sender->room != nullptr)
+				sender->room->sendSignal(16, sender->id);
+			sender->ready=false;
+		break;
+		case 9: // Player signed up for tournament
+			lobby.signUpForTournament(*sender);
+		break;
+		case 10: // Players withdrew from tournament
+			lobby.withdrawFromTournament(*sender);
+		break;
+		case 11: // Player close sign-up for a tournament
+			lobby.closeSignUp();
+		break;
+		case 12: // Players started tournament
+			lobby.startTournament();
+		break;
+		case 13: // Player wants to join a tournament game
+			lobby.joinTournamentGame();
+		break;
+		case 14: // Players closes tournament panel
+			lobby.removeTournamentObserver();
+		break;
+		case 15: // Player requested new tournament list
+			lobby.sendTournamentList(*sender);
+		break;
+		case 16: // Player requested new room list
+			lobby.sendRoomList(*sender);
 		break;
 	}
 }

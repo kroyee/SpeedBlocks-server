@@ -1,0 +1,73 @@
+//////////////////////////////////////////////////////////////////////
+//																	//
+//						Packet list 								//
+//																	//
+//////////////////////////////////////////////////////////////////////
+
+// 0 - Welcome packet sent when a new client connects
+
+// 3 - Response to client if join room was ok or not
+
+// 4 - Informing a room that a new player joined
+
+// 8 - Sending round scores to room
+
+// 9 - Sending authresults back to client
+
+// 12 - Chat message
+
+// 16 - Send room list
+
+// 20 - Client joined the server
+
+// 21 - Client left the server
+
+// 22 - Send Tournament list
+
+// 23 - Send Tournament info
+
+// 24 - Send Tournament game score
+
+// 27 - sendTournament partial information
+
+// 102 - Reply to ping packet
+
+//////////////////////////////////////////////////////////////////////
+//																	//
+//						Signal list 								//
+//																	//
+//////////////////////////////////////////////////////////////////////
+
+// 0 - Not enough players to start tournament
+
+// 1 - A tournament game is ready for you, id1=tournamentId, id2=gameId
+
+// 2 - You can't do that as guest
+
+// 3 - Update number of players in room list
+
+// 4 - Countdown started for a new round, id1=seed1 id2=seed2
+
+// 5 - Countdown is ongoing, sending current count, id1=countdown
+
+// 6 - Inform room that a player left, id1=leaver-id
+
+// 7 - Round ended signal
+
+// 8 - Inform player that he won current round
+
+// 9 - Sending lines to client, id1=amount
+
+// 10 - Round started signal, with new seeds to players who are away, id1=seed1 id2=seed2
+
+// 11 - Player went away, id1=player id
+
+// 12 - Player came back, id1=player id
+
+// 13 - Sending the position of a players to the room, id1=player id, id2=position
+
+// 14 - UDP port was confirmed
+
+// 15 - Player is ready, id1=player id
+
+// 16 - Player is not ready, id1=player id

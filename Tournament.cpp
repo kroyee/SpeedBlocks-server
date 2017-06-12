@@ -73,6 +73,7 @@ void Node::winByWO(sf::Uint8 player) {
 		result.p1_sets=0;
 	}
 	decideGame();
+	sendScore();
 }
 
 void Node::decideGame() {
@@ -109,6 +110,8 @@ void Node::decideGame() {
 		nextgame->sendReadyAlert();
 		nextgame->player1->waitingTime = sf::seconds(0);
 		nextgame->player2->waitingTime = sf::seconds(0);
+		nextgame->player1->sentWaitingTime = 6;
+		nextgame->player2->sentWaitingTime = 6;
 	}
 }
 
@@ -140,12 +143,60 @@ void Node::sendResults(bool asPart) {
 		tournament.sendToTournamentObservers();
 }
 
+void Node::sendScore() {
+	tournament.conn.packet.clear();
+	sf::Uint8 packetid = 24;
+	tournament.conn.packet << packetid << player1->id << player2->id << result.p1_sets << result.p2_sets;
+	if (status == 4)
+		tournament.conn.packet << (sf::Uint8)255;
+	else if (result.p1_rounds.size() > activeSet)
+		tournament.conn.packet << result.p1_rounds[activeSet];
+	else
+		tournament.conn.packet << (sf::Uint8)0;
+
+
+	if (result.p2_rounds.size() > activeSet)
+		tournament.conn.packet << result.p2_rounds[activeSet];
+	else
+		tournament.conn.packet << (sf::Uint8)0;
+
+	if (room != nullptr)
+		tournament.conn.send(*room);
+}
+
 void Node::sendReadyAlert() {
 	if (player1 == nullptr || player2 == nullptr)
 		return;
 	for (auto&& client : tournament.conn.clients)
 		if (client.id == player1->id || client.id == player2->id)
-			tournament.conn.sendSignal(client, 1, tournament.id);
+			client.sendSignal(1, tournament.id);
+}
+
+void Node::sendWaitTime(sf::Uint16 waitTime, sf::Uint8 player) {
+	sf::Uint16 sendTime=5;
+	while (waitTime > 60) {
+		waitTime-=60;
+		sendTime--;
+	}
+	if (player == 1) {
+		if (sendTime < player1->sentWaitingTime) {
+			room->clients.front()->sendSignal(3, sendTime);
+			player1->sentWaitingTime = sendTime;
+		}
+	}
+	else {
+		if (sendTime < player2->sentWaitingTime) {
+			room->clients.front()->sendSignal(3, sendTime);
+			player2->sentWaitingTime = sendTime;
+		}
+	}
+}
+
+void Node::resetWaitTimeSent() {
+	if (player1 != nullptr)
+		player1->sentWaitingTime = 6;
+	if (player2 != nullptr)
+		player2->sentWaitingTime = 6;
 }
 
 Bracket::Bracket() : players(0), depth(0), gameCount(0), idCount(1) {}
@@ -216,10 +267,20 @@ void Tournament::addObserver(Client& client) {
 	for (auto&& observer : keepUpdated)
 		if (observer->id == client.id)
 			return;
+	client.tournament = this;
 	keepUpdated.push_back(&client);
 }
 
-void Tournament::setStartingTime(sf::Uint8 days, sf::Uint8 hours, sf::Uint8 minutes) {
+void Tournament::removeObserver(Client& client) {
+	for (auto it = keepUpdated.begin(); it != keepUpdated.end(); it++)
+		if ((*it)->id == client.id) {
+			client.tournament = nullptr;
+			keepUpdated.erase(it);
+			return;
+		}
+}
+
+void Tournament::setStartingTime(short days, short hours, short minutes) {
 	time_t timetostart = time(NULL);
 	timetostart -= timetostart % 86400;
 	timetostart += 86400*days;
@@ -271,7 +332,7 @@ void Tournament::linkGames(Node& game1, Node& game2) {
 
 void Tournament::putPlayersInBracket() {
 	int amountinrow = 1*pow(2, bracket.depth-1);
-	int start = bracket.games.size()-amountinrow;
+	/*int start = bracket.games.size()-amountinrow;
 	int step = amountinrow/2.0;
 	unsigned int index = start;
 	bool slot1=true;
@@ -304,7 +365,31 @@ void Tournament::putPlayersInBracket() {
 			}
 		if (!slot1)
 			bracket.games[index].player2 = &player;
+	}*/
+	int counter=0;
+	for (auto&& player : participants) {
+		int z=1, x=counter;
+		float sum=0;
+
+		while(x!=0) {
+			if(x&1)
+			sum+=1.0/pow(2,z);
+
+			z++;
+			x=x>>1;
+		}
+
+		int rattmatch=sum*amountinrow + amountinrow - 1;
+		int rattpos = sum*amountinrow*2;
+		rattpos = rattpos%2;
+		if (rattpos)
+			bracket.games[rattmatch].player2 = &player;
+		else
+			bracket.games[rattmatch].player1 = &player;
+
+		counter++;
 	}
+
 	setGameStatus();
 	collapseBracket();
 }
@@ -374,6 +459,8 @@ void Tournament::sendTournament() {
 
 	if (status > 0)
 		sendGames(true);
+
+	conn.send(*conn.sender);
 }
 
 void Tournament::sendParticipantList(bool asPart) {
@@ -453,8 +540,10 @@ void Tournament::sendToTournamentObservers() {
 }
 
 void Tournament::startTournament() {
-	for (auto&& player : participants)
+	for (auto&& player : participants) {
 		player.waitingTime = sf::seconds(0);
+		player.sentWaitingTime = 6;
+	}
 	if (status == 0) {
 		if (players < 3) {
 			status = 4;
@@ -489,13 +578,19 @@ void Tournament::checkWaitTime() {
 					if (game.room->currentPlayers == 1) {
 						if (game.room->clients.front()->id == game.player1->id) {
 							game.player1->waitingTime += conn.serverClock.getElapsedTime() - waitingTime;
-							if (game.player1->waitingTime.asSeconds() > 300)
+							sf::Uint16 waitTime = game.player1->waitingTime.asSeconds();
+							if (waitTime > 300)
 								game.winByWO(1);
+							else
+								game.sendWaitTime(waitTime, 1);
 						}
 						else {
 							game.player2->waitingTime += conn.serverClock.getElapsedTime() - waitingTime;
-							if (game.player2->waitingTime.asSeconds() > 300)
+							sf::Uint16 waitTime = game.player2->waitingTime.asSeconds();
+							if (waitTime > 300)
 								game.winByWO(2);
+							else
+								game.sendWaitTime(waitTime, 2);
 						}
 					}
 	waitingTime = conn.serverClock.getElapsedTime();

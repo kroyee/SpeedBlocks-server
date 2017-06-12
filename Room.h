@@ -62,6 +62,13 @@ public:
 	void makeCountdown();
 	void checkIfRoundEnded();
 	void startCountdown();
+	void sendLines(Client& client);
+	void sendNewPlayerInfo();
+	void sendRoundScores();
+
+	void sendSignal(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+	void sendSignalToAway(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+	void sendSignalToActive(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
 };
 
 #endif

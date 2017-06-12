@@ -50,7 +50,13 @@ public:
 	void send(Room&);
 	void send(Room&, short);
 	void sendUDP(Client& client);
-	void sendSignal(Client& client, sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+	void sendSignal(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+
+	void sendWelcomeMsg();
+	void sendAuthResult(sf::Uint8 authresult, Client& client);
+	void sendChatMsg();
+	void sendClientJoinedServerInfo(Client& client);
+	void sendClientLeftServerInfo(Client& client);
 
 	void manageRooms();
 	void manageClients();
@@ -61,36 +67,6 @@ public:
 	void handleSignal();
 
 	bool getKey();
-
-	//Send packet functions
-	void sendPacket0();
-	void sendPacket1(Room& room, sf::Uint8 countdown);
-	void sendPacket2(Room& room, sf::Uint8 countdown);
-	void sendPacket3(Room& it, sf::Uint8 joinok);
-	void sendPacket4(Room& room);
-	void sendPacket5(Room& room, sf::Uint16 id);
-	void sendPacket6(Room& room);
-	void sendPacket7(Room& room, Client* winner);
-	void sendPacket8();
-	void sendPacket9(sf::Uint8 authresult, Client& client);
-	void sendPacket10(Client& client, sf::Uint8 amount);
-	void sendPacket11(Room& room);
-	void sendPacket12(sf::Uint8 type, const sf::String& to, const sf::String& msg);
-	void sendPacket13();
-	void sendPacket14();
-	void sendPacket15(Client& client);
-	void sendPacket16(Client& client);
-	void sendPacket17(Room& room);
-	void sendPacket18(sf::Uint16 id);
-	void sendPacket19(Client& client);
-	void sendPacket20(Client& client);
-	void sendPacket21(Client& client);
-	void sendPacket22(Client& client);
-	void sendPacket23(Tournament& tournament);
-	void sendPacket24(Node& game);
-	void sendPacket25();
-	void sendPacket26();
-	void sendPacket102();
 };
 
 #endif
