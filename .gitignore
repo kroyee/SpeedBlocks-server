@@ -2,3 +2,10 @@
 /server
 *.sublime*
 /key
+SpeedBlocks-server
+Makefile
+
+# Cmake stuff
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

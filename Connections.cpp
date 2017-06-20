@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include "MingwConvert.h"
+#include "Tournament.h"
 using std::cout;
 using std::endl;
 
@@ -35,6 +36,7 @@ bool Connections::receive() {
 			clientCount++;
 			sendWelcomeMsg();
 			lobby.sendTournamentList(clients.back());
+			lobby.challengeHolder.sendChallengeList(clients.back());
 		}
 		else {
 			std::cout << "CLient accept failed" << std::endl;
@@ -130,13 +132,13 @@ void Connections::sendUDP(Client& client) {
 		std::cout << "Error sending UDP packet to " << (int)client.id << std::endl;
 }
 
-void Connections::sendSignal(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+void Connections::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 	packet.clear();
 	packet << (sf::Uint8)254 << signalId;
-	if (id1)
-		packet << id1;
-	if (id2)
-		packet << id2;
+	if (id1 > -1)
+		packet << (sf::Uint16)id1;
+	if (id2 > -1)
+		packet << (sf::Uint16)id2;
 	for (auto&& client : clients) {
 		status = client.socket.send(packet);
 		if (status != sf::Socket::Done)
@@ -222,6 +224,57 @@ void Connections::sendClientLeftServerInfo(Client& client) { // MOVE
 			send(otherClient);
 }
 
+void Connections::validateClient() {
+	sf::String name, pass;
+	sf::Uint8 guest;
+	sf::Uint16 version;
+	packet >> version >> guest >> sender->name;
+	if (version != clientVersion) {
+		sendAuthResult(3, *sender);
+		std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
+		sender->guest=true;
+	}
+	else if (guest) {
+		sendAuthResult(2, *sender);
+		sender->guest=true;
+		sender->s_rank=25;
+		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
+		sendClientJoinedServerInfo(*sender);
+	}
+	else
+		sender->thread = std::thread(&Client::authUser, sender);
+}
+
+void Connections::validateUDP() {
+	sf::Uint16 clientid;
+	packet >> clientid;
+	for (auto&& client : clients)
+		if (client.id == clientid) {
+			if (client.udpPort != udpPort)
+				client.udpPort = udpPort;
+			client.sendSignal(14);
+			cout << "Confirmed UDP port for " << client.id << endl;
+			return;
+		}
+}
+
+void Connections::getGamestate() {
+	sf::Uint8 datacount;
+	packet >> datacount;
+	for (int c=0; packet >> extractor.tmp[c]; c++) {}
+
+	if ((datacount<50 && sender->datacount>200) || sender->datacount<datacount) {
+		sender->datacount=datacount;
+		sender->data=packet;
+		sender->datavalid=true;
+		PlayfieldHistory history;
+		sender->history.push_front(history);
+		if (sender->history.size() > 100)
+			sender->history.pop_back();
+		extractor.extract(sender->history.front());
+	}
+}
+
 void Connections::handlePacket() {
 	packet >> id;
 	if (id < 100)
@@ -241,51 +294,17 @@ void Connections::handlePacket() {
 			return;
 	}
 	switch (id) {
+		case 1:
+			lobby.getReplay();
+		break;
 		case 2: //Players authing
-		{
-			sf::String name, pass;
-			sf::Uint8 guest;
-			sf::Uint16 version;
-			packet >> version >> guest >> sender->name;
-			if (version != clientVersion) {
-				sendAuthResult(3, *sender);
-				std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
-				sender->guest=true;
-			}
-			else if (guest) {
-				sendAuthResult(2, *sender);
-				sender->guest=true;
-				sender->s_rank=25;
-				std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
-				sendClientJoinedServerInfo(*sender);
-			}
-			else
-				sender->thread = std::thread(&Client::authUser, sender);
-				
-		}
+			validateClient();
 		break;
 		case 3: //Player died and sending round-data
-		{
-			sender->alive=false;
-			sender->position=sender->room->playersAlive;
-			sender->ready=false;
-			sender->room->playerDied();
-			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
-			packet >> sender->bpm >> sender->spm;
-
-			sender->room->sendSignal(13, sender->id, sender->position);
-		}
+			sender->getRoundData();
 		break;
 		case 4: //Player won and sending round-data
-		{
-			packet >> sender->maxCombo >> sender->linesSent >> sender->linesReceived >> sender->linesBlocked;
-			packet >> sender->bpm >> sender->spm;
-			sender->room->sendRoundScores();
-			sender->room->updatePlayerScore();
-			sender->s_gamesWon++;
-			if (sender->bpm > sender->s_maxBpm && sender->room->roundLenght > sf::seconds(10))
-				sender->s_maxBpm = sender->bpm;
-		}
+			sender->getWinnerData();
 		break;
 		case 10: // Chat msg
 			sendChatMsg();
@@ -302,36 +321,10 @@ void Connections::handlePacket() {
 			lobby.createTournament();
 		break;
 		case 99: // UDP packet to show server the right port
-		{
-			sf::Uint16 clientid;
-			packet >> clientid;
-			for (auto&& client : clients)
-				if (client.id == clientid) {
-					if (client.udpPort != udpPort)
-						client.udpPort = udpPort;
-					client.sendSignal(14);
-					cout << "Confirmed UDP port for " << sender->id << endl;
-				}
-		}
+			validateUDP();
 		break;
 		case 100: // UDP packet with gamestate
-		{
-			sf::Uint8 datacount;
-
-			packet >> datacount;
-			for (int c=0; packet >> extractor.tmp[c]; c++) {}
-
-			if ((datacount<50 && sender->datacount>200) || sender->datacount<datacount) {
-				sender->datacount=datacount;
-				sender->data=packet;
-				sender->datavalid=true;
-				PlayfieldHistory history;
-				sender->history.push_front(history);
-				if (sender->history.size() > 100)
-					sender->history.pop_back();
-				extractor.extract(sender->history.front());
-			}
-		}
+			getGamestate();
 		break;
 		case 102: // Ping packet - sending back same packet to client
 			sendUDP(*sender);
@@ -350,10 +343,12 @@ void Connections::handleSignal() {
 			lobby.joinRequest();
 		break;
 		case 1: //Player left a room
-			sender->room->leave(*sender);
+			if (sender->room != nullptr)
+				sender->room->leave(*sender);
 		break;
 		case 2: //Player sent lines
-			sender->room->sendLines(*sender);
+			if (sender->room != nullptr)
+				sender->room->sendLines(*sender);
 		break;
 		case 3: //Player cleared garbage
 		{
@@ -408,6 +403,12 @@ void Connections::handleSignal() {
 		break;
 		case 16: // Player requested new room list
 			lobby.sendRoomList(*sender);
+		break;
+		case 17: // Player want to play challenge
+			lobby.playChallenge();
+		break;
+		case 18: // Player want to watch challenge replay
+			lobby.challengeHolder.sendReplay();
 		break;
 	}
 }

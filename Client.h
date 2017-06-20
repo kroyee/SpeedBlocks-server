@@ -64,7 +64,10 @@ public:
 	void goAway();
 	void unAway();
 
-	void sendSignal(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+	void getRoundData();
+	void getWinnerData();
+
+	void sendSignal(sf::Uint8 signalId, int id1 = -1, int id2 = -1);
 };
 
 #endif

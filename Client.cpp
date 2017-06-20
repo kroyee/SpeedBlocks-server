@@ -1,5 +1,7 @@
 #include "Client.h"
 #include "Connections.h"
+using std::cout;
+using std::endl;
 
 void Client::authUser() {
 	std::cout << "Authing user..." << std::endl;
@@ -242,13 +244,46 @@ void Client::unAway() {
 	room->sendSignal(12, id);
 }
 
-void Client::sendSignal(sf::Uint8 signalId, sf::Uint16 id1, sf::Uint16 id2) {
+void Client::getRoundData() {
+	if (room == nullptr)
+		return;
+	alive=false;
+	position=room->playersAlive;
+	ready=false;
+	room->playerDied();
+	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
+	conn->packet >> bpm >> spm;
+
+	room->sendSignal(13, id, position);
+}
+
+void Client::getWinnerData() {
+	if (room == nullptr)
+		return;
+	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
+	conn->packet >> bpm >> spm;
+	if (room->round) {
+		cout << "Ending round now" << endl;
+		position=1;
+		room->endRound();
+		if (room->gamemode > 5)
+			conn->lobby.challengeHolder.checkResult(*this);
+	}
+	room->sendRoundScores();
+	room->updatePlayerScore();
+	if (room->gamemode < 6 && room->gamemode != 3)
+		s_gamesWon++;
+	if (bpm > s_maxBpm && room->roundLenght > sf::seconds(10))
+		s_maxBpm = bpm;
+}
+
+void Client::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 	sf::Packet packet;
 	packet << (sf::Uint8)254 << signalId;
-	if (id1)
-		packet << id1;
-	if (id2)
-		packet << id2;
+	if (id1 > -1)
+		packet << (sf::Uint16)id1;
+	if (id2 > -1)
+		packet << (sf::Uint16)id2;
 	if (socket.send(packet) != sf::Socket::Done)
 		std::cout << "Error sending Signal packet to " << id << std::endl;
 }

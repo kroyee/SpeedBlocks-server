@@ -545,7 +545,7 @@ void Tournament::startTournament() {
 		player.sentWaitingTime = 6;
 	}
 	if (status == 0) {
-		if (players < 3) {
+		if (players < 2) {
 			status = 4;
 			sendStatus();
 			return;

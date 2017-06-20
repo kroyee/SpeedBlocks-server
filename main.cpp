@@ -2,6 +2,7 @@
 #include <SFML/Network.hpp>
 #include <thread>
 #include "Connections.h"
+#include "Tournament.h"
 using std::cout;
 using std::endl;
 
@@ -37,9 +38,9 @@ int main() {
 	cout << "Listener set up" << endl;
 
 	conn.lobby.idcount=1;
-	conn.lobby.addRoom("Standard", 0, 1, 3);
+	conn.lobby.addRoom("Ranked FFA", 0, 1, 3);
 	conn.lobby.idcount=2;
-	conn.lobby.addRoom("Fast and Furious", 5, 3, 3);
+	conn.lobby.addRoom("Casual", 0, 3, 3);
 	conn.lobby.idcount=10;
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
@@ -56,6 +57,7 @@ int main() {
 		conn.manageRooms();
 		conn.manageClients();
 		conn.manageTournaments();
+		conn.lobby.challengeHolder.saveChallenges();
 		if (status) {
 			for (auto&& client : conn.clients) {
 				cout << client.id << ": " << client.name.toAnsiString();

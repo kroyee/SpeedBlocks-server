@@ -4,12 +4,13 @@
 #include <SFML/Network.hpp>
 #include "Room.h"
 #include "Tournament.h"
+#include "Challenges.h"
 
 class Connections;
 
 class Lobby {
 public:
-	Lobby(Connections* _conn) : conn(_conn), roomCount(0), tournamentCount(0), idcount(0), tourn_idcount(40000), tmp_idcount(50000), daily(nullptr) {}
+	Lobby(Connections* _conn) : conn(_conn), roomCount(0), tournamentCount(0), idcount(0), tourn_idcount(10000), tmp_idcount(20000), daily(nullptr), challengeHolder(*conn) {}
 	Connections* conn;
 	sf::String welcomeMsg;
 
@@ -20,6 +21,8 @@ public:
 	sf::Uint16 idcount, tourn_idcount, tmp_idcount;
 
 	Tournament* daily;
+
+	ChallengeHolder challengeHolder;
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
@@ -44,6 +47,10 @@ public:
 	void removeTournamentObserver();
 	void createTournament();
 	void dailyTournament();
+
+	void playChallenge();
+
+	void getReplay();
 };
 
 #endif

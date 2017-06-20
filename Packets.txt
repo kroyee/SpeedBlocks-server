@@ -6,9 +6,19 @@
 
 // 0 - Welcome packet sent when a new client connects
 
+// 1 - send replay
+
+// 2 - Challenges list
+
 // 3 - Response to client if join room was ok or not
 
 // 4 - Informing a room that a new player joined
+
+// 5 - Challenge leaderboard
+
+// 6 - Request latest challenge replay
+
+// 7 - Tell client challenge result was not good enough
 
 // 8 - Sending round scores to room
 

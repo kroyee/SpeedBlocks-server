@@ -6,10 +6,12 @@ using std::endl;
 void Lobby::joinRequest() {
 	sf::Uint16 id;
 	conn->packet >> id;
-	if (id < 40000)
+	if (id < 10000)
 		joinRoom(id);
-	else
+	else if (id < 20000)
 		joinTournament(id);
+	else
+		challengeHolder.sendLeaderboard(id);
 }
 
 void Lobby::joinRoom(sf::Uint16 roomid) {
@@ -105,7 +107,7 @@ void Lobby::addRoom(const sf::String& name, short max, sf::Uint8 mode, sf::Uint8
 	cout << "Adding room " << rooms.back().name.toAnsiString() << " as " << rooms.back().id << endl;
 	idcount++;
 	roomCount++;
-	if (idcount>=40000)
+	if (idcount>=10000)
 		idcount=10;
 	if (conn->sender != nullptr)
 		sendRoomList(*conn->sender);
@@ -127,8 +129,8 @@ void Lobby::addTempRoom(sf::Uint8 mode, Node* game, Tournament* _tournament) {
 		game->room = &tmp_rooms.back();
 	cout << "Adding tmp room as " << tmp_rooms.back().id << endl;
 	tmp_idcount++;
-	if (tmp_idcount<50000)
-		tmp_idcount=50000;
+	if (tmp_idcount>=30000)
+		tmp_idcount=20000;
 }
 
 void Lobby::removeIdleRooms() {
@@ -170,8 +172,8 @@ void Lobby::addTournament(const sf::String& name, sf::Uint16 _mod_id) {
 	newTournament.name = name;
 	newTournament.moderator_list.push_back(_mod_id);
 	tourn_idcount++;
-	if (tourn_idcount >= 50000)
-		tourn_idcount = 40000;
+	if (tourn_idcount >= 20000)
+		tourn_idcount = 10000;
 	tournamentCount++;
 	tournaments.push_back(newTournament);
 }
@@ -272,8 +274,8 @@ void Lobby::createTournament() {
 	newTournament.id = tourn_idcount;
 	newTournament.moderator_list.push_back(conn->sender->id);
 	tourn_idcount++;
-	if (tourn_idcount >= 50000)
-		tourn_idcount = 40000;
+	if (tourn_idcount >= 20000)
+		tourn_idcount = 10000;
 	tournamentCount++;
 	tournaments.push_back(newTournament);
 }
@@ -323,4 +325,33 @@ void Lobby::dailyTournament() {
 			daily = nullptr;
 		}
 	}
+}
+
+void Lobby::playChallenge() {
+	if (conn->sender->room != nullptr)
+		return;
+
+	if (conn->sender->guest) {
+		conn->sender->sendSignal(2);
+		return;
+	}
+
+	sf::Uint16 challengeId;
+	conn->packet >> challengeId;
+	if (challengeId == 20000)
+		addTempRoom(6);
+	else if (challengeId == 20001)
+		addTempRoom(7);
+	else
+		return;
+
+	tmp_rooms.back().join(*conn->sender);
+	sendJoinRoomResponse(tmp_rooms.back(), tmp_rooms.back().gamemode);
+}
+
+void Lobby::getReplay() {
+	sf::Uint16 type;
+	conn->packet >> type;
+	if (type >= 20000)
+		challengeHolder.updateResult(*conn->sender, type);
 }

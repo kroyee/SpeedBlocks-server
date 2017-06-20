@@ -16,7 +16,7 @@ public:
 
 class Room {
 public:
-	Room(Connections* _conn) : conn(_conn), active(false), round(false), tournamentGame(nullptr) {}
+	Room(Connections* _conn) : conn(_conn), active(false), round(false), waitForReplay(false), tournamentGame(nullptr) {}
 	Connections* conn;
 	sf::String name;
 	sf::Uint16 id;
@@ -36,12 +36,12 @@ public:
 	bool active;
 	short countdownSetting;
 	short countdown;
-	bool round, endround;
+	bool round, endround, waitForReplay;
 	sf::Time countdownTime, roundLenght, timeBetweenRounds;
 	sf::Uint8 playersAlive;
 	sf::Uint16 seed1, seed2;
 
-	sf::Uint8 gamemode; // 1=Ranked FFA, 2=Ranked hero, 3=Unranked FFA, 4=Tournament, 5=1v1
+	sf::Uint8 gamemode; // 1=Ranked FFA, 2=Ranked hero, 3=Unranked FFA, 4=Tournament, 5=1v1, 6,7=challenge
 	Node* tournamentGame;
 	Tournament* tournament;
 
@@ -62,13 +62,14 @@ public:
 	void makeCountdown();
 	void checkIfRoundEnded();
 	void startCountdown();
+
 	void sendLines(Client& client);
 	void sendNewPlayerInfo();
 	void sendRoundScores();
 
-	void sendSignal(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
-	void sendSignalToAway(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
-	void sendSignalToActive(sf::Uint8 signalId, sf::Uint16 id1 = 0, sf::Uint16 id2 = 0);
+	void sendSignal(sf::Uint8 signalId, int id1 = -1, int id2 = -1);
+	void sendSignalToAway(sf::Uint8 signalId, int id1 = -1, int id2 = 1);
+	void sendSignalToActive(sf::Uint8 signalId, int id1 = -1, int id2 = -1);
 };
 
 #endif
