@@ -45,10 +45,6 @@ int main() {
 
 	conn.lobby.setMsg("Welcome to the server you wonderful beast");
 
-	conn.lobby.addTournament("Daily one", 0);
-	conn.lobby.tournaments.back().setStartingTime(0, 19, 30);
-	conn.lobby.daily = &conn.lobby.tournaments.back();
-
 	while (!quit) {
 		if (conn.listen())
 			if (conn.receive())
