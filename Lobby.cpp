@@ -310,7 +310,7 @@ void Lobby::dailyTournament() {
 		}
 		name += "showdown";
 		addTournament(name, 0);
-		tournaments.back().setStartingTime(0, 18, 0);
+		tournaments.back().setStartingTime(0, 19, 30);
 		daily = &tournaments.back();
 	}
 	else {
