@@ -6,6 +6,7 @@ using std::endl;
 
 void Room::startGame() {
 	round=true;
+	cout << "Round started, active players: " << (int)activePlayers << endl;
 	playersAlive = activePlayers;
 	transfearScore();
 	leavers.clear();
@@ -38,6 +39,7 @@ void Room::startCountdown() {
 	seed2 = rand();
 	sendSignalToActive(4, seed1, seed2);
 	sendSignalToAway(10, seed1, seed2);
+	sendSignalToSpectators(10, seed1, seed2);
 }
 
 void Room::transfearScore() {
@@ -70,21 +72,24 @@ void Room::transfearScore() {
 }
 
 void Room::endRound() {
+	if (round)
+		for (auto&& client : clients)
+			client->ready=false;
 	round=false;
 	countdown=0;
 	roundLenght = start.restart();
-	for (auto&& client : clients)
-		client->ready=false;
 	sendSignal(7);
 }
 
 void Room::join(Client& jClient) {
 	if (currentPlayers<maxPlayers || maxPlayers == 0) {
+		if (jClient.spectating)
+			jClient.spectating->removeSpectator(jClient);
 		if (!activePlayers)
 			countdown=0;
 		currentPlayers++;
 		activePlayers++;
-		if (activePlayers > 1 || gamemode == 6 || gamemode == 7)
+		if (activePlayers > 1 || gamemode >= 20000)
 			setActive();
 		clients.push_back(&jClient);
 		jClient.room = this;
@@ -119,6 +124,7 @@ void Room::leave(Client& lClient) {
 			std::cout << lClient.id << " left room " << id << std::endl;
 
 			sendSignal(6, lClient.id);
+			sendSignalToSpectators(6, lClient.id);
 
 			if (gamemode == 4)
 				if (tournamentGame != nullptr)
@@ -127,11 +133,30 @@ void Room::leave(Client& lClient) {
 		}
 }
 
+bool Room::addSpectator(Client& client) {
+	if (client.room || client.spectating == this)
+		return false;
+	if (client.spectating)
+		client.spectating->removeSpectator(client);
+	spectators.push_back(&client);
+	client.spectating = this;
+	return true;
+}
+
+void Room::removeSpectator(Client& client) {
+	for (auto it = spectators.begin(); it != spectators.end(); it++)
+		if ((*it)->id == client.id) {
+			spectators.erase(it);
+			client.spectating = nullptr;
+			return;
+		}
+}
+
 void Room::sendNewPlayerInfo() {
 	conn->packet.clear();
 	sf::Uint8 packetid = 4;
 	conn->packet << packetid << conn->sender->id << conn->sender->name;
-	conn->send(*this);
+	sendPacket();
 }
 
 //Sorting function
@@ -153,7 +178,7 @@ void Room::sendRoundScores() {
 			conn->packet << client->score << client->linesAdjusted;
 		}
 	}
-	conn->send(*this);
+	sendPacket();
 }
 
 void Room::updatePlayerScore() {
@@ -271,6 +296,7 @@ void Room::playerDied() {
 }
 
 void Room::setInactive() {
+	if (!active) return;
 	active=false;
 	if (round) {
 		endround=true;
@@ -297,6 +323,8 @@ void Room::sendGameData() {
 			for (auto&& toClient : clients)
 				if (fromClient->id != toClient->id)
 					conn->send(*fromClient, *toClient);
+			for (auto&& toSpectator : spectators)
+				conn->send(*fromClient, *toSpectator);
 			fromClient->datavalid=false;
 		}
 	}
@@ -336,6 +364,8 @@ void Room::checkIfRoundEnded() {
 					winner->sendSignal(8);
 
 					sendSignal(13, winner->id, winner->position);
+					sendSignalToSpectators(13, winner->id, winner->position);
+					cout << winner->name.toAnsiString() << " won" << endl;
 					break;
 				}
 			if (gamemode == 1)
@@ -387,7 +417,7 @@ void Room::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 		packet << (sf::Uint16)id2;
 	for (auto&& client : clients)
 		if (client->socket.send(packet) != sf::Socket::Done)
-			std::cout << "Error sending Signal packet to room" << id << std::endl;
+			std::cout << "Error sending Signal packet to room " << id << std::endl;
 }
 
 void Room::sendSignalToAway(sf::Uint8 signalId, int id1, int id2) {
@@ -400,7 +430,7 @@ void Room::sendSignalToAway(sf::Uint8 signalId, int id1, int id2) {
 	for (auto&& client : clients)
 		if (client->away)
 			if (client->socket.send(packet) != sf::Socket::Done)
-				std::cout << "Error sending Signal packet to room" << id << std::endl;
+				std::cout << "Error sending Signal packet to room " << id << std::endl;
 }
 
 void Room::sendSignalToActive(sf::Uint8 signalId, int id1, int id2) {
@@ -413,5 +443,35 @@ void Room::sendSignalToActive(sf::Uint8 signalId, int id1, int id2) {
 	for (auto&& client : clients)
 		if (!client->away)
 			if (client->socket.send(packet) != sf::Socket::Done)
-				std::cout << "Error sending Signal packet to room" << id << std::endl;
+				std::cout << "Error sending Signal packet to room " << id << std::endl;
+}
+
+
+void Room::sendSignalToSpectators(sf::Uint8 signalId, int id1, int id2) {
+	sf::Packet packet;
+	packet << (sf::Uint8)254 << signalId;
+	if (id1 > -1)
+		packet << (sf::Uint16)id1;
+	if (id2 > -1)
+		packet << (sf::Uint16)id2;
+	for (auto&& spectator : spectators)
+		if (spectator->socket.send(packet) != sf::Socket::Done)
+			std::cout << "Error sending Signal packet to spectator in room " << id << std::endl;
+}
+
+void Room::sendPacket() {
+	sendPacketToPlayers();
+	sendPacketToSpectators();
+}
+
+void Room::sendPacketToPlayers() {
+	for (auto&& client : clients)
+		if (client->socket.send(conn->packet) != sf::Socket::Done)
+			std::cout << "Error sending packet to spectator in room " << id << std::endl;
+}
+
+void Room::sendPacketToSpectators() {
+	for (auto&& spectator : spectators)
+		if (spectator->socket.send(conn->packet) != sf::Socket::Done)
+			std::cout << "Error sending packet to spectator in room " << id << std::endl;
 }

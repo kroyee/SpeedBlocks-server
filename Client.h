@@ -26,7 +26,7 @@ public:
 	sf::Uint8 datacount;
 	sf::Packet data;
 	sf::Uint16 udpPort;
-	Room* room;
+	Room* room, *spectating;
 	Connections* conn;
 
 	sf::String name;

@@ -186,19 +186,13 @@ void ChallengeHolder::sendLeaderboard(sf::Uint16 id) {
 }
 
 void ChallengeHolder::checkResult(Client& client) {
-	sf::Uint16 id=0;
-	if (client.room->gamemode == 6)
-		id = 20000;
-	else if (client.room->gamemode == 7)
-		id = 20001;
-
 	sf::Uint32 duration;
 	sf::Uint16 blocks;
 
 	conn.packet >> duration >> blocks;
 
 	for (auto&& chall : challenges)
-		if (chall.id == id) {
+		if (chall.id == client.room->gamemode) {
 			for (auto&& score : chall.scores)
 				if (score.id == client.id) {
 					if (duration < score.duration) {

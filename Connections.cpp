@@ -79,6 +79,8 @@ void Connections::disconnectClient(Client& client) {
 		client.room->leave(client);
 	if (client.tournament != nullptr)
 		client.tournament->removeObserver(client);
+	if (client.spectating)
+		client.spectating->removeSpectator(client);
 	selector.remove(client.socket);
 	client.socket.disconnect();
 	std::cout << "Client " << client.id << " disconnected" << std::endl;
@@ -176,6 +178,8 @@ void Connections::sendAuthResult(sf::Uint8 authresult, Client& client) {
 }
 
 void Connections::sendChatMsg() {
+	if (!sender->room && !sender->spectating)
+		return;
 	//Get msg
 	sf::Uint8 type;
 	sf::String to = "", msg;
@@ -188,9 +192,22 @@ void Connections::sendChatMsg() {
 	sf::Uint8 packetid = 12;
 	packet << packetid << type << sender->name << msg;
 	if (type == 1) {
-		for (auto&& client : sender->room->clients)
-			if (client->id != sender->id)
-				send(*client);
+		if (sender->room) {
+			for (auto&& client : sender->room->clients)
+				if (client->id != sender->id)
+					send(*client);
+			for (auto&& client : sender->room->spectators)
+				if (client->id != sender->id)
+					send(*client);
+		}
+		else if (sender->spectating) {
+			for (auto&& client : sender->spectating->clients)
+				if (client->id != sender->id)
+					send(*client);
+			for (auto&& client : sender->spectating->spectators)
+				if (client->id != sender->id)
+					send(*client);
+		}
 	}
 	else if (type == 2) {
 		for (auto&& client : clients)
@@ -371,13 +388,17 @@ void Connections::handleSignal() {
 			sender->unAway();
 		break;
 		case 7: // Player is ready
-			if (!sender->ready && !sender->alive && sender->room != nullptr)
+			if (!sender->ready && !sender->alive && sender->room != nullptr) {
 				sender->room->sendSignal(15, sender->id);
+				sender->room->sendSignalToSpectators(15, sender->id);
+			}
 			sender->ready=true;
 		break;
 		case 8: // Player is not ready
-			if (sender->ready && !sender->alive && sender->room != nullptr)
+			if (sender->ready && !sender->alive && sender->room != nullptr) {
 				sender->room->sendSignal(16, sender->id);
+				sender->room->sendSignalToSpectators(16, sender->id);
+			}
 			sender->ready=false;
 		break;
 		case 9: // Player signed up for tournament
@@ -409,6 +430,13 @@ void Connections::handleSignal() {
 		break;
 		case 18: // Player want to watch challenge replay
 			lobby.challengeHolder.sendReplay();
+		break;
+		case 19: // Players wants to spectate a room
+			lobby.joinAsSpectator();
+		break;
+		case 20: // Player stopped spectating room
+			if (sender->spectating)
+				sender->spectating->removeSpectator(*sender);
 		break;
 	}
 }

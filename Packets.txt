@@ -54,7 +54,7 @@
 
 // 2 - You can't do that as guest
 
-// 3 - Update number of players in room list
+// 3 - Update waiting time until WO in tournament game
 
 // 4 - Countdown started for a new round, id1=seed1 id2=seed2
 

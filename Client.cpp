@@ -149,7 +149,7 @@ void Client::copy(Client& client) {
 
 Client::Client(const Client& client) {
 	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false; incLines=0;
-	tournament = nullptr;
+	tournament = nullptr; spectating=nullptr;
 	
 	maxCombo = client.maxCombo; position = client.position;
 	linesSent = client.linesSent; linesReceived = client.linesReceived; linesBlocked = client.linesBlocked;
@@ -222,26 +222,26 @@ void Client::sendLines() {
 }
 
 void Client::goAway() {
-	if (room != nullptr) {
-		if (away == false) {
-			room->activePlayers--;
-			if (room->activePlayers < 2)
-				room->setInactive();
-		}
-		away=true;
-		room->sendSignal(11, id);
-	}
+	if (!room || away) return;
+
+	room->activePlayers--;
+	alive=false;
+	if (room->activePlayers < 2)
+		room->setInactive();
+	away=true;
+	room->sendSignal(11, id);
+	room->sendSignalToSpectators(11, id);
 }
 
 void Client::unAway() {
-	if (away)
-		if (room != nullptr) {
-			room->activePlayers++;
-			if (room->activePlayers > 1)
-				room->setActive();
-		}
+	if (!room || !away) return;
+
+	room->activePlayers++;
+	if (room->activePlayers > 1)
+		room->setActive();
 	away=false;
 	room->sendSignal(12, id);
+	room->sendSignalToSpectators(12, id);
 }
 
 void Client::getRoundData() {
@@ -255,6 +255,7 @@ void Client::getRoundData() {
 	conn->packet >> bpm >> spm;
 
 	room->sendSignal(13, id, position);
+	room->sendSignalToSpectators(13, id, position);
 }
 
 void Client::getWinnerData() {
@@ -266,7 +267,7 @@ void Client::getWinnerData() {
 		cout << "Ending round now" << endl;
 		position=1;
 		room->endRound();
-		if (room->gamemode > 5)
+		if (room->gamemode >= 20000)
 			conn->lobby.challengeHolder.checkResult(*this);
 	}
 	room->sendRoundScores();

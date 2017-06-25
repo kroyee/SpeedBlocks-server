@@ -161,7 +161,7 @@ void Node::sendScore() {
 		tournament.conn.packet << (sf::Uint8)0;
 
 	if (room != nullptr)
-		tournament.conn.send(*room);
+		room->sendPacket();
 }
 
 void Node::sendReadyAlert() {
@@ -181,12 +181,14 @@ void Node::sendWaitTime(sf::Uint16 waitTime, sf::Uint8 player) {
 	if (player == 1) {
 		if (sendTime < player1->sentWaitingTime) {
 			room->clients.front()->sendSignal(3, sendTime);
+			room->sendSignalToSpectators(3, sendTime);
 			player1->sentWaitingTime = sendTime;
 		}
 	}
 	else {
 		if (sendTime < player2->sentWaitingTime) {
 			room->clients.front()->sendSignal(3, sendTime);
+			room->sendSignalToSpectators(3, sendTime);
 			player2->sentWaitingTime = sendTime;
 		}
 	}

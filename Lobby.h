@@ -26,13 +26,14 @@ public:
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
-	void sendJoinRoomResponse(Room& room, sf::Uint8 joinok);
+	void sendJoinRoomResponse(Room& room, sf::Uint16 joinok);
 	void joinTournament(sf::Uint16 tournamentid);
 	void joinTournamentGame();
+	void joinAsSpectator();
 	bool alreadyInside(const Room&, const Client&);
 
-	void addRoom(const sf::String& name, short, sf::Uint8 mode, sf::Uint8 delay);
-	void addTempRoom(sf::Uint8 mode, Node* game = nullptr, Tournament* _tournament = nullptr);
+	void addRoom(const sf::String& name, short, sf::Uint16 mode, sf::Uint8 delay);
+	void addTempRoom(sf::Uint16 mode, Node* game = nullptr, Tournament* _tournament = nullptr);
 	void removeIdleRooms();
 	void setMsg(const sf::String& msg);
 	void sendRoomList(Client&);

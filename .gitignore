@@ -4,6 +4,8 @@
 /key
 SpeedBlocks-server
 Makefile
+/Challenges/*
+!/Challenges/challenges.list
 
 # Cmake stuff
 CMakeCache.txt
