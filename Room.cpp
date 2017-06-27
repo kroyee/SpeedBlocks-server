@@ -6,7 +6,6 @@ using std::endl;
 
 void Room::startGame() {
 	round=true;
-	cout << "Round started, active players: " << (int)activePlayers << endl;
 	playersAlive = activePlayers;
 	transfearScore();
 	leavers.clear();
@@ -365,7 +364,6 @@ void Room::checkIfRoundEnded() {
 
 					sendSignal(13, winner->id, winner->position);
 					sendSignalToSpectators(13, winner->id, winner->position);
-					cout << winner->name.toAnsiString() << " won" << endl;
 					break;
 				}
 			if (gamemode == 1)

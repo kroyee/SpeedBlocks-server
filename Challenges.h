@@ -32,7 +32,7 @@ struct Challenge {
 
 	std::list<Score> scores;
 
-	sf::Uint8 scoreCount;
+	sf::Uint16 scoreCount;
 
 	bool update;
 

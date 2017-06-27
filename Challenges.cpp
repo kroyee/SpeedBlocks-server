@@ -242,6 +242,7 @@ void ChallengeHolder::updateResult(Client& client, sf::Uint16 id) {
 					if (client.room != nullptr)
 						client.room->waitForReplay=false;
 					sendLeaderboard(id);
+					score.replay.packet << (sf::Uint8)200 << client.name;
 					return;
 				}
 			return;
