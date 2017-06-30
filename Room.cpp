@@ -12,6 +12,7 @@ void Room::startGame() {
 	adjust.clear();
 	endround=false;
 	countdown=false;
+	start.restart();
 	for (auto&& client : clients) {
 		client->datavalid=false;
 		client->datacount=250;

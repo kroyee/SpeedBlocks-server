@@ -1,7 +1,7 @@
 #include "PacketCompress.h"
 #include "Client.h"
 
-void PacketCompress::extract(PlayfieldHistory& history) {
+void PacketCompress::extract(HistoryState& history) {
 	tmpcount=0;
 	bitcount=0;
 	sf::Uint8 counter=0;
@@ -22,6 +22,23 @@ void PacketCompress::extract(PlayfieldHistory& history) {
 			history.square[y][x]=0;
 		for (; y<22-endy; y++)
 			getBits(history.square[y][x], 3);
+	}
+	sf::Uint8 discard;
+	getBits(discard, 4); getBits(discard, 5);
+	getBits(history.piece, 3);
+	getBits(discard, 5);
+	getBits(history.nextpiece, 3);
+	getBits(discard, 5);
+	getBits(history.combo, 5);
+	getBits(history.pending, 8);
+	getBits(history.bpm, 8);
+	getBits(history.comboTimer, 7);
+	getBits(history.countdown, 2);
+	if (history.countdown)
+		history.time=0;
+	else {
+		getBits(discard, 8);
+		history.time=discard;
 	}
 }
 

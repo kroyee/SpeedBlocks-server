@@ -6,19 +6,15 @@
 #include <list>
 #include <iostream>
 #include "MingwConvert.h"
+#include "ClientHistory.h"
 
 class Room;
 class Connections;
 class Tournament;
 
-class PlayfieldHistory {
-public:
-	sf::Uint8 square[22][10];
-};
-
 class Client {
 public:
-	Client(Connections* _conn) : conn(_conn), guest(false), away(false) {}
+	Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {}
 	Client(const Client& client);
 	sf::IpAddress address;
 	sf::TcpSocket socket;
@@ -48,7 +44,10 @@ public:
 	sf::Time uploadTime;
 	sf::Time lastHeardFrom;
 
-	std::list<PlayfieldHistory> history;
+	sf::Uint8 pingId;
+	sf::Time pingStart, pingTime;
+
+	PlayfieldHistory history;
 
 	Tournament* tournament;
 

@@ -364,7 +364,7 @@ void Lobby::playChallenge() {
 
 	if (conn->sender->guest) {
 		conn->sender->sendSignal(2);
-		return;
+		//return;
 	}
 
 	sf::Uint16 challengeId;

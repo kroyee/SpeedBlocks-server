@@ -3,7 +3,7 @@
 
 #include <SFML/Network.hpp>
 
-class PlayfieldHistory;
+class HistoryState;
 
 class PacketCompress {
 public:
@@ -11,7 +11,7 @@ public:
 	sf::Uint8 bitcount=0;
 	sf::Uint8 tmpcount=0;
 
-	void extract(PlayfieldHistory&);
+	void extract(HistoryState&);
 	void getBits(sf::Uint8&, sf::Uint8);
 };
 

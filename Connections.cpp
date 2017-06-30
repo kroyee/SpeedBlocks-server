@@ -284,12 +284,26 @@ void Connections::getGamestate() {
 		sender->datacount=datacount;
 		sender->data=packet;
 		sender->datavalid=true;
-		PlayfieldHistory history;
-		sender->history.push_front(history);
-		if (sender->history.size() > 100)
-			sender->history.pop_back();
-		extractor.extract(sender->history.front());
+		HistoryState history;
+		sender->history.states.push_front(history);
+		if (sender->history.states.size() > 100)
+			sender->history.states.pop_back();
+		extractor.extract(sender->history.states.front());
+		sender->history.validate();
 	}
+}
+
+void Connections::getPing() {
+	sf::Uint8 pingId;
+	packet >> pingId;
+
+	if (pingId != sender->pingId) {
+		sender->pingId = pingId;
+		sender->pingStart = serverClock.getElapsedTime();
+		sendUDP(*sender);
+	}
+	else
+		sender->pingTime = serverClock.getElapsedTime() - sender->pingStart;
 }
 
 void Connections::handlePacket() {
@@ -343,8 +357,8 @@ void Connections::handlePacket() {
 		case 100: // UDP packet with gamestate
 			getGamestate();
 		break;
-		case 102: // Ping packet - sending back same packet to client
-			sendUDP(*sender);
+		case 102: // Ping packet
+			getPing();
 		break;
 		case 254: // Signal packet
 			handleSignal();

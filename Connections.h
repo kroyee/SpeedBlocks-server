@@ -60,6 +60,7 @@ public:
 	void validateClient();
 	void validateUDP();
 	void getGamestate();
+	void getPing();
 
 	void manageRooms();
 	void manageClients();

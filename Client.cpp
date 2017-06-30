@@ -147,9 +147,9 @@ void Client::copy(Client& client) {
 	conn=client.conn;
 }
 
-Client::Client(const Client& client) {
+Client::Client(const Client& client) : history(*this) {
 	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false; incLines=0;
-	tournament = nullptr; spectating=nullptr;
+	tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0); pingTime=sf::seconds(0);
 	
 	maxCombo = client.maxCombo; position = client.position;
 	linesSent = client.linesSent; linesReceived = client.linesReceived; linesBlocked = client.linesBlocked;
