@@ -19,8 +19,8 @@ public:
 	Client& client;
 	std::list<HistoryState> states;
 
-	sf::Int8 lastTimeDiff;
-	sf::Int8 maxTimeDiff;
+	sf::Int16 lastTimeDiff;
+	sf::Int16 maxTimeDiff;
 
 	sf::Int8 timeDiffDirectionCount;
 

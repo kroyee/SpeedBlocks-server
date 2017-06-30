@@ -14,9 +14,9 @@ void PlayfieldHistory::validate() {
 	// The received time data is only 0-255 (ms/100 or 0-25,5s) and here we convert it to be stored as a
 	// continous ms/100 value from 0~65000 or 0-6500s
 	while (thisFrame->time < lastFrame->time)
-		thisFrame->time += 256;
+		thisFrame->time += 2048;
 
-	sf::Int8 timeDiff = client.room->start.getElapsedTime().asMilliseconds()/100 - thisFrame->time;
+	sf::Int16 timeDiff = client.room->start.getElapsedTime().asMilliseconds()/10 - thisFrame->time;
 
 	if (timeDiff > maxTimeDiff)
 		maxTimeDiff = timeDiff;
@@ -28,7 +28,7 @@ void PlayfieldHistory::validate() {
 
 	lastTimeDiff = timeDiff;
 
-	cout << (int)timeDiff << " " << (int)timeDiffDirectionCount << endl;
+	cout << thisFrame->time << " " << (int)timeDiff << " " << (int)timeDiffDirectionCount << endl;
 }
 
 void PlayfieldHistory::clear() {
