@@ -10,7 +10,7 @@ class HistoryState {
 public:
 	sf::Uint8 square[22][10];
 	sf::Uint8 piece, nextpiece, combo, pending, bpm, comboTimer, countdown;
-	sf::Uint16 time;
+	sf::Uint32 time;
 };
 
 class PlayfieldHistory {
@@ -22,7 +22,7 @@ public:
 	sf::Int16 lastTimeDiff;
 	sf::Int16 maxTimeDiff;
 
-	sf::Int8 timeDiffDirectionCount;
+	sf::Int16 timeDiffDirectionCount;
 
 	void validate();
 

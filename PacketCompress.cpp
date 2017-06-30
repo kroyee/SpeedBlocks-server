@@ -39,7 +39,7 @@ void PacketCompress::extract(HistoryState& history) {
 	else {
 		sf::Uint8 smallpart, bigpart;
 		getBits(smallpart, 8);
-		getBits(bigpart, 3);
+		getBits(bigpart, 8);
 		history.time=bigpart*256 + smallpart;
 	}
 }
