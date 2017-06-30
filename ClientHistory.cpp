@@ -27,12 +27,20 @@ void PlayfieldHistory::validate() {
 		timeDiffDirectionCount--;
 
 	lastTimeDiff = timeDiff;
+	if (thisFrame->time > lastEveningOutDirectionCount) {
+		lastEveningOutDirectionCount+=1000;
+		if (timeDiffDirectionCount > 0)
+			timeDiffDirectionCount--;
+		else if (timeDiffDirectionCount < 0)
+			timeDiffDirectionCount++;
+	}
 
 	cout << thisFrame->time << " " << (int)timeDiff << " " << (int)timeDiffDirectionCount << endl;
 }
 
 void PlayfieldHistory::clear() {
 	timeDiffDirectionCount = 0;
+	lastEveningOutDirectionCount = 0;
 	lastTimeDiff = 0;
 	maxTimeDiff = 0;
 	states.clear();

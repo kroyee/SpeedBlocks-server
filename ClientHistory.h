@@ -23,6 +23,7 @@ public:
 	sf::Int16 maxTimeDiff;
 
 	sf::Int16 timeDiffDirectionCount;
+	sf::Uint32 lastEveningOutDirectionCount;
 
 	void validate();
 
