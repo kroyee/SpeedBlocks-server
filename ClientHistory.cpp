@@ -11,8 +11,8 @@ void PlayfieldHistory::validate() {
 	lastFrame++;
 	if (lastFrame == states.end() || !client.room)
 		return;
-	// The received time data is only 0-255 (ms/100 or 0-25,5s) and here we convert it to be stored as a
-	// continous ms/100 value from 0~65000 or 0-6500s
+	// The received time data is milliseconds as an uint16, and here we assume that ~13s has not passed between
+	// states and increment by 65535 to store the values as a continous uint32 value
 	while (thisFrame->time < lastFrame->time)
 		thisFrame->time += 65536;
 
@@ -26,6 +26,12 @@ void PlayfieldHistory::validate() {
 	else if (timeDiff < lastTimeDiff)
 		timeDiffDirectionCount--;
 
+	if (timeDiffDirectionCount > 14 || timeDiffDirectionCount < -14) {
+		cout << client.name.toAnsiString() << " was kicked from " << client.room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
+		client.sendSignal(17, 1);
+		client.room->leave(client);
+	}
+
 	lastTimeDiff = timeDiff;
 	if (thisFrame->time > lastEveningOutDirectionCount) {
 		lastEveningOutDirectionCount+=1000;
@@ -34,8 +40,6 @@ void PlayfieldHistory::validate() {
 		else if (timeDiffDirectionCount < 0)
 			timeDiffDirectionCount++;
 	}
-
-	cout << thisFrame->time << " " << (int)timeDiff << " " << (int)timeDiffDirectionCount << endl;
 }
 
 void PlayfieldHistory::clear() {

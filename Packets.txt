@@ -81,3 +81,5 @@
 // 15 - Player is ready, id1=player id
 
 // 16 - Player is not ready, id1=player id
+
+// 17 - Kick player from a room, id1=reason

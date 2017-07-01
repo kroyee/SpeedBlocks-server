@@ -98,6 +98,7 @@ void Room::join(Client& jClient) {
 		jClient.away=false;
 		jClient.datacount=250;
 		jClient.ready=false;
+		jClient.history.clear();
 		std::cout << jClient.id << " joined room " << id << std::endl;
 	}
 }
