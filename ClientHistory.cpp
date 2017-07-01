@@ -16,15 +16,19 @@ void PlayfieldHistory::validate() {
 	while (thisFrame->time < lastFrame->time)
 		thisFrame->time += 65536;
 
-	sf::Int16 timeDiff = client.room->start.getElapsedTime().asMilliseconds() - thisFrame->time;
+	thisFrame->received = client.room->start.getElapsedTime().asMilliseconds();
+	sf::Int16 timeDiff = thisFrame->received - thisFrame->time;
 
 	if (timeDiff > maxTimeDiff)
 		maxTimeDiff = timeDiff;
 
-	if (timeDiff > lastTimeDiff)
-		timeDiffDirectionCount++;
-	else if (timeDiff < lastTimeDiff)
-		timeDiffDirectionCount--;
+	if (thisFrame->received - lastFrame->received > 50) {
+		if (timeDiff > lastTimeDiff)
+			timeDiffDirectionCount++;
+		else if (timeDiff < lastTimeDiff)
+			timeDiffDirectionCount--;
+		lastTimeDiff = timeDiff;
+	}
 
 	if (timeDiffDirectionCount > 14 || timeDiffDirectionCount < -14) {
 		cout << client.name.toAnsiString() << " was kicked from " << client.room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
@@ -32,7 +36,6 @@ void PlayfieldHistory::validate() {
 		client.room->leave(client);
 	}
 
-	lastTimeDiff = timeDiff;
 	if (thisFrame->time > lastEveningOutDirectionCount) {
 		lastEveningOutDirectionCount+=1000;
 		if (timeDiffDirectionCount > 0)

@@ -11,6 +11,7 @@ public:
 	sf::Uint8 square[22][10];
 	sf::Uint8 piece, nextpiece, combo, pending, bpm, comboTimer, countdown;
 	sf::Uint32 time;
+	sf::Uint32 received;
 };
 
 class PlayfieldHistory {
