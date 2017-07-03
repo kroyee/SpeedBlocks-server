@@ -30,14 +30,14 @@ void PlayfieldHistory::validate() {
 		lastTimeDiff = timeDiff;
 	}
 
-	if (timeDiffDirectionCount > 14 || timeDiffDirectionCount < -14) {
+	if (timeDiffDirectionCount > 14) {
 		cout << client.name.toAnsiString() << " was kicked from " << client.room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
 		client.sendSignal(17, 1);
 		client.room->leave(client);
 	}
 
 	if (thisFrame->time > lastEveningOutDirectionCount) {
-		lastEveningOutDirectionCount+=1000;
+		lastEveningOutDirectionCount+=800;
 		if (timeDiffDirectionCount > 0)
 			timeDiffDirectionCount--;
 		else if (timeDiffDirectionCount < 0)
