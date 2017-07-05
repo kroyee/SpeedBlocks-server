@@ -103,7 +103,10 @@ Client::Client(const Client& client) : history(*this) {
 	s_maxCombo = client.s_maxCombo; s_maxBpm = client.s_maxBpm; s_rank = client.s_rank;
 	s_points = client.s_points; s_heropoints = client.s_heropoints; s_herorank = client.s_herorank;
 	s_avgBpm = client.s_avgBpm; s_gamesPlayed = client.s_gamesPlayed; s_gamesWon = client.s_gamesWon;
-	s_totalGames = client.s_totalGames; s_totalBpm = client.s_totalBpm;
+	s_totalGames = client.s_totalGames; s_totalBpm = client.s_totalBpm; s_1vs1points = client.s_1vs1points;
+	s_1vs1rank = client.s_1vs1rank; s_gradeA = client.s_gradeA; s_gradeB = client.s_gradeB; s_gradeC = client.s_gradeC;
+	s_gradeD = client.s_gradeD; s_tournamentsplayed = client.s_tournamentsplayed;
+	s_tournamentswon = client.s_tournamentswon;
 
 	conn=client.conn;
 }
