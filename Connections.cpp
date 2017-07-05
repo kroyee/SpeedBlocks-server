@@ -32,6 +32,7 @@ bool Connections::receive() {
 			std::cout << "Client accepted: " << idcount-1  << std::endl;
 			clients.back().address = clients.back().socket.getRemoteAddress();
 			clients.back().lastHeardFrom = serverClock.getElapsedTime();
+			clients.back().guest=true;
 			selector.add(clients.back().socket);
 			clientCount++;
 			sendWelcomeMsg();
@@ -249,11 +250,9 @@ void Connections::validateClient() {
 	if (version != clientVersion) {
 		sendAuthResult(3, *sender);
 		std::cout << "Client tried to connect with wrong client version: " << version << std::endl;
-		sender->guest=true;
 	}
 	else if (guest) {
 		sendAuthResult(2, *sender);
-		sender->guest=true;
 		sender->s_rank=25;
 		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 		sendClientJoinedServerInfo(*sender);
