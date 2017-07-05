@@ -3,6 +3,7 @@
 
 #include <SFML/Network.hpp>
 #include "Client.h"
+#include "EloResults.h"
 
 class Connections;
 class Node;
@@ -46,6 +47,8 @@ public:
 	Node* tournamentGame;
 	Tournament* tournament;
 
+	EloResults eloResults;
+
 	void join(Client&);
 	void leave(Client&);
 
@@ -57,6 +60,8 @@ public:
 
 	void scoreFFARound();
 	void scoreTournamentRound();
+	void score1vs1Round();
+	void scoreHeroRound();
 
 	void transfearScore();
 	void updatePlayerScore();

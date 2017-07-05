@@ -28,7 +28,7 @@ public:
 	sf::String name;
 	sf::Uint8 authresult;
 
-	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataInit, sdataPut, away, ready;
+	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataPutFailed, sdataInit, sdataPut, away, ready;
 
 	std::thread thread;
 
@@ -37,9 +37,10 @@ public:
 	float incLines, linesAdjusted;
 
 	sf::Uint8 s_maxCombo, s_maxBpm, s_rank;
-	sf::Int16 s_points, s_heropoints, s_herorank;
+	sf::Int16 s_points;
+	sf::Uint16 s_heropoints, s_herorank, s_1vs1points, s_1vs1rank, s_gradeA, s_gradeB, s_gradeC, s_gradeD;
 	float s_avgBpm;
-	sf::Uint32 s_gamesPlayed, s_gamesWon, s_totalGames, s_totalBpm;
+	sf::Uint32 s_gamesPlayed, s_gamesWon, s_totalGames, s_totalBpm, s_tournamentsplayed, s_tournamentswon;
 
 	sf::Time uploadTime;
 	sf::Time lastHeardFrom;

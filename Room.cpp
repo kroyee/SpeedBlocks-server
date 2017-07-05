@@ -113,7 +113,7 @@ void Room::leave(Client& lClient) {
 				lClient.position=playersAlive;
 				playerDied();
 			}
-			if ((gamemode == 1 || gamemode == 2) && !lClient.guest) {
+			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
 				leavers.push_back(lClient);
 				leavers.back().s_points=0;
 			}
@@ -273,12 +273,57 @@ void Room::scoreTournamentRound() {
 					active=false;
 			}
 			tournamentGame->sendScore();
+			score1vs1Round();
 			return;
 		}
 }
 
-float eloExpected(float pointsA, float pointsB) { //Gives A's ExpectedPoints
-	return 1.0 / (1.0 + pow(10.0, (pointsB - pointsA) / 400.0));
+void Room::score1vs1Round() {
+	if (currentPlayers + leavers.size() < 2)
+		return;
+
+	Client *winner = nullptr, *loser = nullptr;
+	for (auto client : clients)
+		if (client->position == 1)
+			winner = client;
+	for (auto client : clients)
+		if (client->position == 2)
+			loser = client;
+	for (auto client : leavers)
+		if (client.position == 2)
+			loser = &client;
+
+	if (!winner || !loser)
+		return;
+
+	eloResults.addResult(*winner, *loser, 1);
+	eloResults.calculateResults();
+}
+
+void Room::scoreHeroRound() {
+	if (currentPlayers + leavers.size() < 2)
+		return;
+
+	for (auto winner : clients)
+		if (winner->position) {
+			for (auto loser : clients)
+				if (loser->position && winner->position < loser->position)
+					eloResults.addResult(*winner, *loser, 2);
+			for (auto loser : leavers)
+				if (loser.position && winner->position < loser.position)
+					eloResults.addResult(*winner, loser, 2);
+		}
+	for (auto winner : leavers)
+		if (winner.position) {
+			for (auto loser : clients)
+				if (loser->position && winner.position < loser->position)
+					eloResults.addResult(winner, *loser, 2);
+			for (auto loser : leavers)
+				if (loser.position && winner.position < loser.position)
+					eloResults.addResult(winner, loser, 2);
+		}
+
+	eloResults.calculateResults();
 }
 
 // Rnew = Rold + K * (ActualPoints - ExpectedPoints)
@@ -366,12 +411,17 @@ void Room::checkIfRoundEnded() {
 
 					sendSignal(13, winner->id, winner->position);
 					sendSignalToSpectators(13, winner->id, winner->position);
+
+					if (gamemode == 1)
+						scoreFFARound();
+					else if (gamemode == 2)
+						scoreHeroRound();
+					else if (gamemode == 4)
+						scoreTournamentRound();
+					else if (gamemode == 5)
+						score1vs1Round();
 					break;
 				}
-			if (gamemode == 1)
-				scoreFFARound();
-			else if (gamemode == 4)
-				scoreTournamentRound();
 			endRound();
 		}
 	}

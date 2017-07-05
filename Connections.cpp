@@ -518,6 +518,7 @@ void Connections::manageTournaments() {
 	for (auto&& tournament : lobby.tournaments) {
 		tournament.checkIfStart();
 		tournament.checkWaitTime();
+		tournament.checkIfScoreWasSent();
 	}
 	lobby.dailyTournament();
 }

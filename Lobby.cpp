@@ -342,6 +342,7 @@ void Lobby::dailyTournament() {
 		name += "showdown";
 		addTournament(name, 0);
 		tournaments.back().setStartingTime(0, 19, 30);
+		tournaments.back().grade = 4;
 		daily = &tournaments.back();
 	}
 	else {

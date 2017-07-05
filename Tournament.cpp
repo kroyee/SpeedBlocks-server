@@ -1,12 +1,13 @@
 #include "Tournament.h"
 #include <iostream>
 #include "Connections.h"
+#include "JSONWrap.h"
 using std::cout;
 using std::endl;
 
 Results::Results() : p1_sets(0), p2_sets(0) {}
 
-Participant::Participant() : id(0), name("") {}
+Participant::Participant() : id(0), name(""), played(false), position(0) {}
 
 Node::Node(Tournament& _tournament) : tournament(_tournament), status(0), activeSet(0) {
 	player1=nullptr;
@@ -29,7 +30,8 @@ bool Node::p1won() {
 		activeSet++;
 		if (activeSet == sets) {
 			decideGame();
-			sendResults();
+			player1->played=true;
+			player2->played=true;
 			return true;
 		}
 	}
@@ -50,6 +52,8 @@ bool Node::p2won() {
 		activeSet++;
 		if (activeSet == sets) {
 			decideGame();
+			player1->played=true;
+			player2->played=true;
 			return true;
 		}
 	}
@@ -67,13 +71,34 @@ void Node::winByWO(sf::Uint8 player) {
 	if (player == 1) {
 		result.p1_sets=1;
 		result.p2_sets=0;
+		player1->played=true;
 	}
 	else {
 		result.p2_sets=1;
 		result.p1_sets=0;
+		player2->played=true;
 	}
 	decideGame();
 	sendScore();
+}
+
+void Node::setPosition() {
+	if (depth == 1) {
+		if (result.p1_sets > result.p2_sets) {
+			player1->position=1;
+			player2->position=2;
+		}
+		else {
+			player2->position=1;
+			player1->position=2;
+		}
+	}
+	else {
+		if (result.p1_sets > result.p2_sets)
+			player2->position=depth+1;
+		else
+			player1->position=depth+1;
+	}
 }
 
 void Node::decideGame() {
@@ -84,10 +109,12 @@ void Node::decideGame() {
 		return;
 	}
 	sendResults();
+	setPosition();
 
 	if (nextgame == nullptr) {
 		tournament.status = 3;
 		tournament.sendStatus();
+		tournament.thread = std::thread(&Tournament::scoreTournament, &tournament);
 		return;
 	}
 	
@@ -229,7 +256,7 @@ void Bracket::sendAllReadyAlerts() {
 			game.sendReadyAlert();
 }
 
-Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0) {}
+Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false) {}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -596,4 +623,37 @@ void Tournament::checkWaitTime() {
 						}
 					}
 	waitingTime = conn.serverClock.getElapsedTime();
+}
+
+void checkIfScoreWasSent() {
+	if (scoreSent)
+		if (thread.joinable()) {
+			thread.join();
+			scoreSent=false;
+		}
+	if (scoreSentFailed)
+		if (thread.joinable()) {
+			thread.join();
+			scoreSentFailed=false;
+			thread = std::thread(&Tournament::scoreTournament, this);
+		}
+}
+
+void Tournament::scoreTournament() {
+	JSONWrap jwrap;
+	jwrap.addPair("depth", depth);
+	jwrap.addPair("grade", grade);
+	for (auto participant : participants)
+		if (participant.played)
+			jwrap.addPair(to_string(participant.id), participant.position);
+
+	sf::Http::Response response = jwrap.sendPost("/report_tournament.php");
+	if (response.getStatus() == sf::Http::Response::Ok) {
+		cout << "Tournament " << id << ": " << response.getBody() << endl;
+		scoreSent=true;
+	}
+    else {
+        std::cout << "scoreTournament failed request" << std::endl;
+        scoreSentFailed = true;
+    }
 }

@@ -1,5 +1,6 @@
 #include "Client.h"
 #include "Connections.h"
+#include "JSONWrap.h"
 using std::cout;
 using std::endl;
 
@@ -38,45 +39,26 @@ void Client::authUser() {
 }
 
 void Client::sendData() {
-	sf::Http::Request request("/put.php", sf::Http::Request::Post);
-
-	sf::String tmp = to_string(s_avgBpm);
-	unsigned short c = tmp.find('.');
-	if (c != sf::String::InvalidPos)
-		tmp = tmp.substring(0,c+3);
-
-    sf::String stream = "id="+to_string(id)+"&maxcombo="+to_string(s_maxCombo)+"&maxbpm="+to_string(s_maxBpm);
-    stream += "&gamesplayed="+to_string(s_gamesPlayed)+"&avgbpm="+tmp;
-    stream += "&gameswon="+to_string(s_gamesWon)+"&rank="+to_string(s_rank)+"&points="+to_string(s_points+1000);
-    stream += "&heropoints="+to_string(s_heropoints)+"&totalbpm="+to_string(s_totalBpm);
-    stream += "&totalgamesplayed="+to_string(s_totalGames)+"&herorank="+to_string(s_herorank);
-    stream += "&serverkey="+conn->serverkey;
-    request.setBody(stream);
-    request.setField("Content-Type", "application/x-www-form-urlencoded");
-
-    sf::Http http("http://localhost");
-    sf::Http::Response response = http.sendRequest(request);
+    JSONWrap jwrap;
+    jwrap.addPair("key", client.conn->serverkey);
+    jwrap.addClientStats(*this);
+    sf::Http::Response response = jwrap.sendPost("put_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
         	std::cout << "Client " << (int)id << ": " << response.getBody() << std::endl;
         	sdataSet=true;
     }
     else {
-        std::cout << "request failed" << std::endl;
-        sdataSetFailed=true;
+        std::cout << "sendData failed request" << std::endl;
+        sdataPutFailed=true;
     }
 }
 
 void Client::getData() {
-	std::cout << "Getting data for " << (int)id << std::endl;
-	sf::Http::Request request("/get.php", sf::Http::Request::Post);
-
-    sf::String stream = "id=" + to_string(id);
-    request.setBody(stream);
-    request.setField("Content-Type", "application/x-www-form-urlencoded");
-
-    sf::Http http("http://localhost");
-    sf::Http::Response response = http.sendRequest(request);
+    JSONWrap jwrap;
+    jwrap.addPair("id", id);
+    jwrap.addPair("all", 1);
+    sf::Http::Response response = jwrap.sendPost("/get_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
     	if (response.getBody().substr(0,5) == "Empty") {
@@ -87,54 +69,16 @@ void Client::getData() {
     		sdataSet=true;
     	}
     	else {
-	    	std::string data = response.getBody();
-	    	std::cout << data << std::endl;
-	    	short c2;
-	    	short c = data.find('%');
-	    	s_avgBpm = getDataFloat(0,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_gamesPlayed = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_gamesWon = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_heropoints = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_herorank = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_maxBpm = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_maxCombo = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-			s_points = getDataInt(c2,c,data)-1000;
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_rank = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_totalGames = getDataInt(c2,c,data);
-	    	c2=c+1; c=data.find('%',c2);
-	    	s_totalBpm = getDataInt(c2,c,data);
+	    	jwrap.jsonToClientStats(*this, response.getBody());
 	    	std::cout << "Data retrieved for " << (int)id << std::endl;
 	    	sdataInit=true;
 	    	sdataSet=true;
 	    }
     }
     else {
-        std::cout << "request failed" << std::endl;
+        std::cout << "getData failed request" << std::endl;
         sdataSetFailed = true;
     }
-}
-
-int Client::getDataInt(short c2, short c, std::string& data) {
-	if (c > c2)
-		return stoi(data.substr(c2, c));
-	else
-		return 0;
-}
-
-float Client::getDataFloat(short c2, short c, std::string& data) {
-	if (c > c2)
-		return stof(data.substr(c2, c));
-	else
-		return 0;
 }
 
 void Client::copy(Client& client) {
@@ -150,6 +94,7 @@ void Client::copy(Client& client) {
 Client::Client(const Client& client) : history(*this) {
 	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false; incLines=0;
 	tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0); pingTime=sf::seconds(0);
+	sdataPutFailed=false;
 	
 	maxCombo = client.maxCombo; position = client.position;
 	linesSent = client.linesSent; linesReceived = client.linesReceived; linesBlocked = client.linesBlocked;
@@ -174,6 +119,12 @@ void Client::checkIfStatsSet() {
 			thread.join();
 			sdataSetFailed=false;
 			thread = std::thread(&Client::getData, this);
+		}
+	if (sdataPutFailed)
+		if (thread.joinable()) {
+			thread.join();
+			sdataPutFailed=false;
+			thread = std::thread(&Client::sendData, this);
 		}
 }
 

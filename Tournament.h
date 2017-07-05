@@ -3,6 +3,7 @@
 
 #include <SFML/Network.hpp>
 #include <list>
+#include <thread>
 
 class Client;
 class Room;
@@ -26,6 +27,8 @@ public:
 	sf::String name;
 	sf::Time waitingTime;
 	sf::Uint16 sentWaitingTime;
+	bool played;
+	sf::Uint8 position;
 };
 
 class Node {
@@ -44,6 +47,7 @@ public:
 	bool p1won();
 	bool p2won();
 	void winByWO(sf::Uint8 player);
+	void setPosition();
 	void sendResults(bool asPart=false);
 	void sendScore();
 	void decideGame();
@@ -82,6 +86,10 @@ public:
 
 	sf::String name;
 	sf::Uint16 id;
+	sf::Uint8 grade;
+
+	std::thread thread;
+	bool scoreSent;
 
 	bool addPlayer(Client& client);
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
@@ -108,6 +116,9 @@ public:
 
 	void checkIfStart();
 	void checkWaitTime();
+	void checkIfScoreWasSent();
+
+	void scoreTournament();
 };
 
 #endif
