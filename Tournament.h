@@ -73,6 +73,7 @@ public:
 class Tournament {
 public:
 	Tournament(Connections&);
+	Tournament(const Tournament& tournament);
 	Connections& conn;
 	std::list<Participant> participants;
 	std::list<Client*> keepUpdated;
@@ -89,7 +90,7 @@ public:
 	sf::Uint8 grade;
 
 	std::thread thread;
-	bool scoreSent;
+	bool scoreSent, scoreSentFailed;
 
 	bool addPlayer(Client& client);
 	bool addPlayer(const sf::String& name, sf::Uint16 id);

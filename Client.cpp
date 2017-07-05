@@ -40,7 +40,7 @@ void Client::authUser() {
 
 void Client::sendData() {
     JSONWrap jwrap;
-    jwrap.addPair("key", client.conn->serverkey);
+    jwrap.addPair("key", conn->serverkey);
     jwrap.addClientStats(*this);
     sf::Http::Response response = jwrap.sendPost("put_stats.php");
 

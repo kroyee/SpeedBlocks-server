@@ -256,7 +256,16 @@ void Bracket::sendAllReadyAlerts() {
 			game.sendReadyAlert();
 }
 
-Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false) {}
+Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false), scoreSentFailed(false) {}
+Tournament::Tournament(const Tournament& tournament) : conn(tournament.conn) {
+	players=0; startingTime=0; scoreSent=false; scoreSentFailed=false;
+	rounds = tournament.rounds;
+	sets = tournament.sets;
+	status = tournament.status;
+	id = tournament.id;
+	name = tournament.name;
+	moderator_list = tournament.moderator_list;
+}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -625,7 +634,7 @@ void Tournament::checkWaitTime() {
 	waitingTime = conn.serverClock.getElapsedTime();
 }
 
-void checkIfScoreWasSent() {
+void Tournament::checkIfScoreWasSent() {
 	if (scoreSent)
 		if (thread.joinable()) {
 			thread.join();
@@ -641,7 +650,7 @@ void checkIfScoreWasSent() {
 
 void Tournament::scoreTournament() {
 	JSONWrap jwrap;
-	jwrap.addPair("depth", depth);
+	jwrap.addPair("depth", bracket.depth);
 	jwrap.addPair("grade", grade);
 	for (auto participant : participants)
 		if (participant.played)

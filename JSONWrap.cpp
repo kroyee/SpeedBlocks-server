@@ -23,20 +23,20 @@ void JSONWrap::addPair(const sf::String& key, sf::Uint32 value) {
 }
 
 void JSONWrap::addClientStats(Client& client) {
-	jwrap.addPair("user_id", client.id);
-	jwrap.addPair("maxcombo", client.s_maxCombo);
-	jwrap.addPair("maxbpm", client.s_maxBpm);
-    jwrap.addPair("gamesplayed", client.s_gamesPlayed);
-    jwrap.addPair("avgbpm", client.s_avgBpm);
-    jwrap.addPair("gameswon", client.s_gamesWon);
-    jwrap.addPair("rank", client.s_rank);
-    jwrap.addPair("points", client.s_points+1000);
-    jwrap.addPair("heropoints", client.s_heropoints);
-    jwrap.addPair("totalbpm", client.s_totalBpm);
-    jwrap.addPair("totalgames", client.s_totalGames); 
-    jwrap.addPair("herorank", client.s_herorank);
-    jwrap.addPair("1vs1points", client.s_1vs1points);
-    jwrap.addPair("1vs1rank", client.s_1vs1rank);
+	addPair("user_id", client.id);
+	addPair("maxcombo", client.s_maxCombo);
+	addPair("maxbpm", client.s_maxBpm);
+    addPair("gamesplayed", client.s_gamesPlayed);
+    addPair("avgbpm", client.s_avgBpm);
+    addPair("gameswon", client.s_gamesWon);
+    addPair("rank", client.s_rank);
+    addPair("points", client.s_points+1000);
+    addPair("heropoints", client.s_heropoints);
+    addPair("totalbpm", client.s_totalBpm);
+    addPair("totalgames", client.s_totalGames); 
+    addPair("herorank", client.s_herorank);
+    addPair("1vs1points", client.s_1vs1points);
+    addPair("1vs1rank", client.s_1vs1rank);
 }
 
 std::string JSONWrap::getJsonString() {
@@ -95,7 +95,7 @@ void JSONWrap::jsonToClientStats(Client& client, std::string jsonString) {
 
 sf::Http::Response JSONWrap::sendPost(const sf::String& _request) {
 	sf::Http::Request request(_request, sf::Http::Request::Post);
-	request.setBody(jwrap.getJsonString());
+	request.setBody(getJsonString());
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 	sf::Http http("http://localhost");
     return http.sendRequest(request);
