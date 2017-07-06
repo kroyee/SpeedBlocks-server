@@ -5,6 +5,7 @@
 #include <list>
 
 class Client;
+class StatsHolder;
 
 struct Pair {
 	sf::String key, value;
@@ -18,7 +19,7 @@ public:
 	void addPair(const sf::String& key, sf::Uint32 value);
 	void addClientStats(Client& client);
 	std::string getJsonString();
-	void jsonToClientStats(Client& client, std::string jsonString);
+	void jsonToClientStats(StatsHolder& stats, std::string jsonString);
 	sf::Http::Response sendPost(const sf::String& _request);
 	void clear();
 };

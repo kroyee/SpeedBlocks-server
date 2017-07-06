@@ -66,7 +66,8 @@ int main() {
 	}
 
 	for (auto&& it : conn.clients) {
-		it.socket.disconnect();
+		it.socket->disconnect();
+		delete it.socket;
 	}
 	conn.listener.close();
 	conn.udpSock.unbind();

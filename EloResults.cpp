@@ -12,12 +12,12 @@ void EloResults::addResult(Client& winner, Client& loser, sf::Uint8 type) {
 	newresult.type = type;
 
 	if (type == 1) {
-		newresult.winner_expected = eloExpected(winner.s_1vs1points, loser.s_1vs1points);
-		newresult.loser_expected = eloExpected(loser.s_1vs1points, winner.s_1vs1points);
+		newresult.winner_expected = eloExpected(winner.stats.vspoints, loser.stats.vspoints);
+		newresult.loser_expected = eloExpected(loser.stats.vspoints, winner.stats.vspoints);
 	}
 	else if (type == 2) {
-		newresult.winner_expected = eloExpected(winner.s_heropoints, loser.s_heropoints);
-		newresult.loser_expected = eloExpected(loser.s_heropoints, winner.s_heropoints);
+		newresult.winner_expected = eloExpected(winner.stats.heropoints, loser.stats.heropoints);
+		newresult.loser_expected = eloExpected(loser.stats.heropoints, winner.stats.heropoints);
 	}
 	else
 		return;
@@ -28,12 +28,12 @@ void EloResults::addResult(Client& winner, Client& loser, sf::Uint8 type) {
 void EloResults::calculateResults() {
 	while (result.size()) {
 		if (result.front().type == 1) {
-			result.front().winner->s_1vs1points += 20 * (1 - result.front().winner_expected);
-			result.front().loser->s_1vs1points += 20 * (0 - result.front().loser_expected);
+			result.front().winner->stats.vspoints += 20 * (1 - result.front().winner_expected);
+			result.front().loser->stats.vspoints += 20 * (0 - result.front().loser_expected);
 		}
 		else if (result.front().type == 2) {
-			result.front().winner->s_heropoints += 20 * (1 - result.front().winner_expected);
-			result.front().loser->s_heropoints += 20 * (0 - result.front().loser_expected);
+			result.front().winner->stats.heropoints += 20 * (1 - result.front().winner_expected);
+			result.front().loser->stats.heropoints += 20 * (0 - result.front().loser_expected);
 		}
 
 		result.pop_front();

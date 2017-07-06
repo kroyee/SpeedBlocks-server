@@ -28,12 +28,12 @@ bool Connections::receive() {
 		clients.push_back(newclient);
 		clients.back().id = idcount;
 		idcount++;
-		if (listener.accept(clients.back().socket) == sf::Socket::Done) {
+		if (listener.accept(*clients.back().socket) == sf::Socket::Done) {
 			std::cout << "Client accepted: " << idcount-1  << std::endl;
-			clients.back().address = clients.back().socket.getRemoteAddress();
+			clients.back().address = clients.back().socket->getRemoteAddress();
 			clients.back().lastHeardFrom = serverClock.getElapsedTime();
 			clients.back().guest=true;
-			selector.add(clients.back().socket);
+			selector.add(*clients.back().socket);
 			clientCount++;
 			sendWelcomeMsg();
 			lobby.sendTournamentList(clients.back());
@@ -55,8 +55,8 @@ bool Connections::receive() {
 	}
 	packet.clear();
 	for (auto it = clients.begin(); it != clients.end();  it++)
-		if (selector.isReady(it->socket)) {
-			status = it->socket.receive(packet);
+		if (selector.isReady(*it->socket)) {
+			status = it->socket->receive(packet);
 			if (status == sf::Socket::Done) {
 				sender = &(*it);
 				sender->lastHeardFrom = serverClock.getElapsedTime();
@@ -82,21 +82,22 @@ void Connections::disconnectClient(Client& client) {
 		client.tournament->removeObserver(client);
 	if (client.spectating)
 		client.spectating->removeSpectator(client);
-	selector.remove(client.socket);
-	client.socket.disconnect();
+	selector.remove(*client.socket);
+	client.socket->disconnect();
+	delete client.socket;
 	std::cout << "Client " << client.id << " disconnected" << std::endl;
 	clientCount--;
 }
 
 void Connections::send(Client& client) {
-	status = client.socket.send(packet);
+	status = client.socket->send(packet);
 	if (status != sf::Socket::Done)
 		std::cout << "Error sending TCP packet to " << (int)client.id << std::endl;
 }
 
 void Connections::send(Room& room) {
 	for (auto&& it : room.clients) {
-		status = it->socket.send(packet);
+		status = it->socket->send(packet);
 		if (status != sf::Socket::Done)
 			std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
 	}
@@ -106,7 +107,7 @@ void Connections::send(Room& room, short type) {
 	if (type == 1) { //Send package to everyone who is not away
 		for (auto&& it : room.clients) {
 			if (!it->away) {
-				status = it->socket.send(packet);
+				status = it->socket->send(packet);
 				if (status != sf::Socket::Done)
 					std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
 			}
@@ -115,7 +116,7 @@ void Connections::send(Room& room, short type) {
 	else if (type == 2) {
 		for (auto&& it : room.clients) {
 			if (it->away) { //Send package to everyone who is away
-				status = it->socket.send(packet);
+				status = it->socket->send(packet);
 				if (status != sf::Socket::Done)
 					std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
 			}
@@ -143,7 +144,7 @@ void Connections::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 	if (id2 > -1)
 		packet << (sf::Uint16)id2;
 	for (auto&& client : clients) {
-		status = client.socket.send(packet);
+		status = client.socket->send(packet);
 		if (status != sf::Socket::Done)
 			cout << "Error sending Signal packet to " << (int)client.id << endl;
 	}
@@ -253,12 +254,12 @@ void Connections::validateClient() {
 	}
 	else if (guest) {
 		sendAuthResult(2, *sender);
-		sender->s_rank=25;
+		sender->stats.rank=25;
 		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 		sendClientJoinedServerInfo(*sender);
 	}
 	else
-		sender->thread = std::thread(&Client::authUser, sender);
+		sender->thread = new std::thread(&Client::authUser, sender);
 }
 
 void Connections::validateUDP() {
@@ -491,23 +492,25 @@ void Connections::manageUploadData() {
 	for (auto it = uploadData.begin(); it != uploadData.end(); it++) {
 		if (serverClock.getElapsedTime() > it->uploadTime) {
 			it->sdataPut=true;
-			it->thread = std::thread(&Client::sendData, &(*it));
+			it->thread = new std::thread(&Client::sendData, &(*it));
 			it->uploadTime = it->uploadTime + sf::seconds(1000);
 		}
 		if (it->sdataSet) {
-			if (it->thread.joinable()) {
-				it->thread.join();
+			if (it->thread->joinable()) {
+				it->thread->join();
+				delete it->thread;
 				it->sdataSet=false;
 				it->sdataSetFailed=false;
 				it = uploadData.erase(it);
 			}
 		}
 		else if (it->sdataSetFailed) {
-			if (it->thread.joinable()) {
-				it->thread.join();
+			if (it->thread->joinable()) {
+				it->thread->join();
+				delete it->thread;
 				it->sdataSet=false;
 				it->sdataSetFailed=false;
-				it->thread = std::thread(&Client::sendData, &(*it));
+				it->thread = new std::thread(&Client::sendData, &(*it));
 			}
 		}
 	}

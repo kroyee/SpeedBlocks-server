@@ -12,12 +12,20 @@ class Room;
 class Connections;
 class Tournament;
 
+class StatsHolder {
+public:
+	sf::Uint8 maxCombo, maxBpm, rank;
+	sf::Int16 points;
+	sf::Uint16 heropoints, herorank, vspoints, vsrank, gradeA, gradeB, gradeC, gradeD;
+	float avgBpm;
+	sf::Uint32 gamesPlayed, gamesWon, totalGames, totalBpm, tournamentsplayed, tournamentswon;
+};
+
 class Client {
 public:
-	Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {}
-	Client(const Client& client);
+	Client(Connections* _conn);
 	sf::IpAddress address;
-	sf::TcpSocket socket;
+	sf::TcpSocket *socket;
 	sf::Uint16 id;
 	sf::Uint8 datacount;
 	sf::Packet data;
@@ -30,23 +38,19 @@ public:
 
 	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataPutFailed, sdataInit, sdataPut, away, ready;
 
-	std::thread thread;
+	std::thread *thread;
 
 	sf::Uint8 maxCombo, position, garbageCleared;
 	sf::Uint16 linesSent, linesReceived, linesBlocked, bpm, spm, score;
 	float incLines, linesAdjusted;
-
-	sf::Uint8 s_maxCombo, s_maxBpm, s_rank;
-	sf::Int16 s_points;
-	sf::Uint16 s_heropoints, s_herorank, s_1vs1points, s_1vs1rank, s_gradeA, s_gradeB, s_gradeC, s_gradeD;
-	float s_avgBpm;
-	sf::Uint32 s_gamesPlayed, s_gamesWon, s_totalGames, s_totalBpm, s_tournamentsplayed, s_tournamentswon;
 
 	sf::Time uploadTime;
 	sf::Time lastHeardFrom;
 
 	sf::Uint8 pingId;
 	sf::Time pingStart, pingTime;
+
+	StatsHolder stats;
 
 	PlayfieldHistory history;
 
@@ -57,7 +61,6 @@ public:
 	int getDataInt(short, short, std::string&);
 	float getDataFloat(short, short, std::string&);
 	void authUser();
-	void copy(Client&);
 	void checkIfStatsSet();
 	void checkIfAuth();
 	void sendLines();

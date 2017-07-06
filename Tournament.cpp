@@ -114,7 +114,7 @@ void Node::decideGame() {
 	if (nextgame == nullptr) {
 		tournament.status = 3;
 		tournament.sendStatus();
-		tournament.thread = std::thread(&Tournament::scoreTournament, &tournament);
+		tournament.thread = new std::thread(&Tournament::scoreTournament, &tournament);
 		return;
 	}
 	
@@ -257,15 +257,6 @@ void Bracket::sendAllReadyAlerts() {
 }
 
 Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false), scoreSentFailed(false) {}
-Tournament::Tournament(const Tournament& tournament) : conn(tournament.conn) {
-	players=0; startingTime=0; scoreSent=false; scoreSentFailed=false;
-	rounds = tournament.rounds;
-	sets = tournament.sets;
-	status = tournament.status;
-	id = tournament.id;
-	name = tournament.name;
-	moderator_list = tournament.moderator_list;
-}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -571,7 +562,7 @@ void Tournament::sendGames(bool asPart) {
 
 void Tournament::sendToTournamentObservers() {
 	for (auto&& client : keepUpdated) {
-		conn.status = client->socket.send(conn.packet);
+		conn.status = client->socket->send(conn.packet);
 		if (conn.status != sf::Socket::Done)
 			cout << "Error sending TCP packet to tournament observer " << id << endl;
 	}
@@ -636,15 +627,17 @@ void Tournament::checkWaitTime() {
 
 void Tournament::checkIfScoreWasSent() {
 	if (scoreSent)
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
+			delete thread;
 			scoreSent=false;
 		}
 	if (scoreSentFailed)
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
 			scoreSentFailed=false;
-			thread = std::thread(&Tournament::scoreTournament, this);
+			delete thread;
+			thread = new std::thread(&Tournament::scoreTournament, this);
 		}
 }
 

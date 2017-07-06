@@ -24,8 +24,8 @@ void Room::startGame() {
 		client->linesAdjusted=0;
 		client->history.clear();
 		if (!client->away) {
-			client->s_gamesPlayed++;
-			client->s_totalGames++;
+			client->stats.gamesPlayed++;
+			client->stats.totalGames++;
 			client->alive=true;
 		}
 	}
@@ -46,26 +46,26 @@ void Room::transfearScore() {
 	for (auto&& leaver : leavers) {
 		for (auto&& client : conn->clients)
 			if (leaver.id == client.id) {
-				client.s_points += leaver.s_points;
-				if (client.s_points>1000) {
-					client.s_points=0;
-					client.s_rank--;
+				client.stats.points += leaver.stats.points;
+				if (client.stats.points>1000) {
+					client.stats.points=0;
+					client.stats.rank--;
 				}
-				if (client.s_points<-1000) {
-					client.s_points=0;
-					client.s_rank++;
+				if (client.stats.points<-1000) {
+					client.stats.points=0;
+					client.stats.rank++;
 				}
 			}
 		for (auto&& client : conn->uploadData)
 			if (leaver.id == client.id) {
-				client.s_points += leaver.s_points;
-				if (client.s_points>1000) {
-					client.s_points=0;
-					client.s_rank--;
+				client.stats.points += leaver.stats.points;
+				if (client.stats.points>1000) {
+					client.stats.points=0;
+					client.stats.rank--;
 				}
-				if (client.s_points<-1000) {
-					client.s_points=0;
-					client.s_rank++;
+				if (client.stats.points<-1000) {
+					client.stats.points=0;
+					client.stats.rank++;
 				}
 			}
 	}
@@ -115,7 +115,7 @@ void Room::leave(Client& lClient) {
 			}
 			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
 				leavers.push_back(lClient);
-				leavers.back().s_points=0;
+				leavers.back().stats.points=0;
 			}
 			it = clients.erase(it);
 			if (activePlayers < 2)
@@ -175,7 +175,7 @@ void Room::sendRoundScores() {
 	for (auto&& client : clients) {
 		if (client->position) {
 			conn->packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
-			conn->packet << client->linesBlocked << client->bpm << client->spm << client->s_rank << client->position;
+			conn->packet << client->linesBlocked << client->bpm << client->spm << client->stats.rank << client->position;
 			conn->packet << client->score << client->linesAdjusted;
 		}
 	}
@@ -184,10 +184,10 @@ void Room::sendRoundScores() {
 
 void Room::updatePlayerScore() {
 	for (auto&& client : clients) {
-		if (client->maxCombo > client->s_maxCombo)
-			client->s_maxCombo = client->maxCombo;
-		client->s_totalBpm+=client->bpm;
-		client->s_avgBpm = (float)client->s_totalBpm / (float)client->s_gamesPlayed;
+		if (client->maxCombo > client->stats.maxCombo)
+			client->stats.maxCombo = client->maxCombo;
+		client->stats.totalBpm+=client->bpm;
+		client->stats.avgBpm = (float)client->stats.totalBpm / (float)client->stats.gamesPlayed;
 	}
 }
 
@@ -200,15 +200,15 @@ void Room::scoreFFARound() {
 	for (auto&& client : clients) {
 		if (client->position)
 			client->score += currentPlayers - client->position;
-		if (client->position && client->s_rank && !client->guest) {
+		if (client->position && client->stats.rank && !client->guest) {
 			playersinround++;
-			avgrank+=client->s_rank;
+			avgrank+=client->stats.rank;
 		}
 	}
 	for (auto&& client : leavers) {
-		if (client.s_rank) {
+		if (client.stats.rank) {
 			playersinround++;
-			avgrank+=client.s_rank;
+			avgrank+=client.stats.rank;
 		}
 	}
 	avgrank/=playersinround; // Determine number of players to be scored & avg rank
@@ -221,13 +221,13 @@ void Room::scoreFFARound() {
 	short lookingfor=0, position=1;
 	while (lookingfor<playersinround) {
 		for (auto&& client : clients)
-			if (position == client->position && client->s_rank && !client->guest) {
+			if (position == client->position && client->stats.rank && !client->guest) {
 				inround[lookingfor] = client;
 				lookingfor++;
 				break;
 			}
 		for (auto&& client : leavers)
-			if (position == client.position && client.s_rank) {
+			if (position == client.position && client.stats.rank) {
 				inround[lookingfor] = &client;
 				lookingfor++;
 				break;
@@ -237,22 +237,22 @@ void Room::scoreFFARound() {
 
 	for (short i=0; i<playersinround; i++) {
 		pointcoff[i] = ((((float)i+1)/(float)playersinround) - 1.0/(float)playersinround  - (1.0-1.0/(float)playersinround)/2.0) * (-1.0/ ((1.0-1.0/(float)playersinround)/2.0) );
-		pointcoff[i] += (inround[i]->s_rank - avgrank) * 0.05 + 0.2;
-		inround[i]->s_points += 100*pointcoff[i]*(inround[i]->s_rank/5.0);
-		if (inround[i]->s_points > 1000) {
-			inround[i]->s_rank--;
-			inround[i]->s_points=0;
+		pointcoff[i] += (inround[i]->stats.rank - avgrank) * 0.05 + 0.2;
+		inround[i]->stats.points += 100*pointcoff[i]*(inround[i]->stats.rank/5.0);
+		if (inround[i]->stats.points > 1000) {
+			inround[i]->stats.rank--;
+			inround[i]->stats.points=0;
 		}
-		else if (inround[i]->s_points < -1000) {
-			if (inround[i]->s_rank == 25)
-				inround[i]->s_points = -1000;
+		else if (inround[i]->stats.points < -1000) {
+			if (inround[i]->stats.rank == 25)
+				inround[i]->stats.points = -1000;
 			else {
-				inround[i]->s_rank++;
-				inround[i]->s_points=0;
+				inround[i]->stats.rank++;
+				inround[i]->stats.points=0;
 			}
 		}
 
-		std::cout << (int)inround[i]->id << ": " << pointcoff[i] << " -> " << (int)inround[i]->s_points << " & " << (int)inround[i]->s_rank << std::endl;
+		std::cout << (int)inround[i]->id << ": " << pointcoff[i] << " -> " << (int)inround[i]->stats.points << " & " << (int)inround[i]->stats.rank << std::endl;
 	}
 
 	delete[] pointcoff;
@@ -466,7 +466,7 @@ void Room::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 	if (id2 > -1)
 		packet << (sf::Uint16)id2;
 	for (auto&& client : clients)
-		if (client->socket.send(packet) != sf::Socket::Done)
+		if (client->socket->send(packet) != sf::Socket::Done)
 			std::cout << "Error sending Signal packet to room " << id << std::endl;
 }
 
@@ -479,7 +479,7 @@ void Room::sendSignalToAway(sf::Uint8 signalId, int id1, int id2) {
 		packet << (sf::Uint16)id2;
 	for (auto&& client : clients)
 		if (client->away)
-			if (client->socket.send(packet) != sf::Socket::Done)
+			if (client->socket->send(packet) != sf::Socket::Done)
 				std::cout << "Error sending Signal packet to room " << id << std::endl;
 }
 
@@ -492,7 +492,7 @@ void Room::sendSignalToActive(sf::Uint8 signalId, int id1, int id2) {
 		packet << (sf::Uint16)id2;
 	for (auto&& client : clients)
 		if (!client->away)
-			if (client->socket.send(packet) != sf::Socket::Done)
+			if (client->socket->send(packet) != sf::Socket::Done)
 				std::cout << "Error sending Signal packet to room " << id << std::endl;
 }
 
@@ -505,7 +505,7 @@ void Room::sendSignalToSpectators(sf::Uint8 signalId, int id1, int id2) {
 	if (id2 > -1)
 		packet << (sf::Uint16)id2;
 	for (auto&& spectator : spectators)
-		if (spectator->socket.send(packet) != sf::Socket::Done)
+		if (spectator->socket->send(packet) != sf::Socket::Done)
 			std::cout << "Error sending Signal packet to spectator in room " << id << std::endl;
 }
 
@@ -516,12 +516,12 @@ void Room::sendPacket() {
 
 void Room::sendPacketToPlayers() {
 	for (auto&& client : clients)
-		if (client->socket.send(conn->packet) != sf::Socket::Done)
+		if (client->socket->send(conn->packet) != sf::Socket::Done)
 			std::cout << "Error sending packet to spectator in room " << id << std::endl;
 }
 
 void Room::sendPacketToSpectators() {
 	for (auto&& spectator : spectators)
-		if (spectator->socket.send(conn->packet) != sf::Socket::Done)
+		if (spectator->socket->send(conn->packet) != sf::Socket::Done)
 			std::cout << "Error sending packet to spectator in room " << id << std::endl;
 }

@@ -24,19 +24,19 @@ void JSONWrap::addPair(const sf::String& key, sf::Uint32 value) {
 
 void JSONWrap::addClientStats(Client& client) {
 	addPair("user_id", client.id);
-	addPair("maxcombo", client.s_maxCombo);
-	addPair("maxbpm", client.s_maxBpm);
-    addPair("gamesplayed", client.s_gamesPlayed);
-    addPair("avgbpm", client.s_avgBpm);
-    addPair("gameswon", client.s_gamesWon);
-    addPair("rank", client.s_rank);
-    addPair("points", client.s_points+1000);
-    addPair("heropoints", client.s_heropoints);
-    addPair("totalbpm", client.s_totalBpm);
-    addPair("totalgames", client.s_totalGames); 
-    addPair("herorank", client.s_herorank);
-    addPair("1vs1points", client.s_1vs1points);
-    addPair("1vs1rank", client.s_1vs1rank);
+	addPair("maxcombo", client.stats.maxCombo);
+	addPair("maxbpm", client.stats.maxBpm);
+    addPair("gamesplayed", client.stats.gamesPlayed);
+    addPair("avgbpm", client.stats.avgBpm);
+    addPair("gameswon", client.stats.gamesWon);
+    addPair("rank", client.stats.rank);
+    addPair("points", client.stats.points+1000);
+    addPair("heropoints", client.stats.heropoints);
+    addPair("totalbpm", client.stats.totalBpm);
+    addPair("totalgames", client.stats.totalGames); 
+    addPair("herorank", client.stats.herorank);
+    addPair("vspoints", client.stats.vspoints);
+    addPair("vsrank", client.stats.vsrank);
 }
 
 std::string JSONWrap::getJsonString() {
@@ -55,7 +55,7 @@ std::string JSONWrap::getJsonString() {
 	return jsonString;
 }
 
-void JSONWrap::jsonToClientStats(Client& client, std::string jsonString) {
+void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 	std::size_t start=0, stop;
 	bool end=false;
 	jsonString.erase(jsonString.begin());
@@ -69,25 +69,25 @@ void JSONWrap::jsonToClientStats(Client& client, std::string jsonString) {
 		stop = jsonString.find(",", start);
 		sf::Uint32 value = stoi(jsonString.substr(start, stop-start));
 		start = stop+1;
-		if (key == "maxcombo") client.s_maxCombo = value;
-		else if (key == "maxbpm") client.s_maxBpm = value;
-		else if (key == "rank") client.s_rank = value;
-		else if (key == "points") client.s_points = value-1000;
-		else if (key == "heropoints") client.s_heropoints = value;
-		else if (key == "herorank") client.s_herorank = value;
-		else if (key == "1vs1points") client.s_1vs1points = value;
-		else if (key == "1vs1rank") client.s_1vs1rank = value;
-		else if (key == "avgbpm") client.s_avgBpm = value;
-		else if (key == "gamesplayed") client.s_gamesPlayed = value;
-		else if (key == "gameswon") client.s_gamesWon = value;
-		else if (key == "totalgames") client.s_totalGames = value;
-		else if (key == "totalbpm") client.s_totalBpm = value;
-		else if (key == "tournamentsplayed") client.s_tournamentsplayed = value;
-		else if (key == "tournamentswon") client.s_tournamentswon = value;
-		else if (key == "gradeA") client.s_gradeA = value;
-		else if (key == "gradeB") client.s_gradeB = value;
-		else if (key == "gradeC") client.s_gradeC = value;
-		else if (key == "gradeD") client.s_gradeD = value;
+		if (key == "maxcombo") stats.maxCombo = value;
+		else if (key == "maxbpm") stats.maxBpm = value;
+		else if (key == "rank") stats.rank = value;
+		else if (key == "points") stats.points = value-1000;
+		else if (key == "heropoints") stats.heropoints = value;
+		else if (key == "herorank") stats.herorank = value;
+		else if (key == "vspoints") stats.vspoints = value;
+		else if (key == "vsrank") stats.vsrank = value;
+		else if (key == "avgbpm") stats.avgBpm = value;
+		else if (key == "gamesplayed") stats.gamesPlayed = value;
+		else if (key == "gameswon") stats.gamesWon = value;
+		else if (key == "totalgames") stats.totalGames = value;
+		else if (key == "totalbpm") stats.totalBpm = value;
+		else if (key == "tournamentsplayed") stats.tournamentsplayed = value;
+		else if (key == "tournamentswon") stats.tournamentswon = value;
+		else if (key == "gradeA") stats.gradeA = value;
+		else if (key == "gradeB") stats.gradeB = value;
+		else if (key == "gradeC") stats.gradeC = value;
+		else if (key == "gradeD") stats.gradeD = value;
 		if (stop == std::string::npos)
 			break;
 	}

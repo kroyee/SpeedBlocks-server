@@ -4,6 +4,12 @@
 using std::cout;
 using std::endl;
 
+Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {
+	socket = new sf::TcpSocket; room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false;
+	sdataPut=false; incLines=0; tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0);
+	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0;
+}
+
 void Client::authUser() {
 	std::cout << "Authing user..." << std::endl;
 	sf::Http::Request request("/hash_check.php", sf::Http::Request::Post);
@@ -61,19 +67,10 @@ void Client::getData() {
     sf::Http::Response response = jwrap.sendPost("/get_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
-    	if (response.getBody().substr(0,5) == "Empty") {
-    		std::cout << "No stats found for " << (int)id << std::endl;
-    		s_maxCombo = 0; s_maxBpm = 0; s_avgBpm = 0; s_gamesPlayed = 0; s_gamesWon = 0; s_rank = 25; s_points = 0;
-    		s_heropoints=0; s_herorank=0; s_totalGames=0; s_totalBpm=0;
-    		sdataInit=true;
-    		sdataSet=true;
-    	}
-    	else {
-	    	jwrap.jsonToClientStats(*this, response.getBody());
-	    	std::cout << "Data retrieved for " << (int)id << std::endl;
-	    	sdataInit=true;
-	    	sdataSet=true;
-	    }
+    	jwrap.jsonToClientStats(this->stats, response.getBody());
+    	std::cout << "Data retrieved for " << (int)id << std::endl;
+    	sdataInit=true;
+    	sdataSet=true;
     }
     else {
         std::cout << "getData failed request" << std::endl;
@@ -81,60 +78,34 @@ void Client::getData() {
     }
 }
 
-void Client::copy(Client& client) {
-	s_maxCombo=client.s_maxCombo; s_maxBpm=client.s_maxBpm; s_rank=client.s_rank;
-	s_points=client.s_points; s_heropoints=client.s_heropoints; s_herorank=client.s_herorank;
-	s_avgBpm=client.s_avgBpm; s_totalBpm=client.s_totalBpm;
-	s_gamesPlayed=client.s_gamesPlayed; s_gamesWon=client.s_gamesWon; s_totalGames=client.s_totalGames;
-	sdataInit=true;
-	away=false;
-	conn=client.conn;
-}
-
-Client::Client(const Client& client) : history(*this) {
-	id = client.id;  room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false; sdataPut=false; incLines=0;
-	tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0); pingTime=sf::seconds(0);
-	sdataPutFailed=false;
-	
-	maxCombo = client.maxCombo; position = client.position;
-	linesSent = client.linesSent; linesReceived = client.linesReceived; linesBlocked = client.linesBlocked;
-	bpm = client.bpm; spm = client.spm;
-
-	s_maxCombo = client.s_maxCombo; s_maxBpm = client.s_maxBpm; s_rank = client.s_rank;
-	s_points = client.s_points; s_heropoints = client.s_heropoints; s_herorank = client.s_herorank;
-	s_avgBpm = client.s_avgBpm; s_gamesPlayed = client.s_gamesPlayed; s_gamesWon = client.s_gamesWon;
-	s_totalGames = client.s_totalGames; s_totalBpm = client.s_totalBpm; s_1vs1points = client.s_1vs1points;
-	s_1vs1rank = client.s_1vs1rank; s_gradeA = client.s_gradeA; s_gradeB = client.s_gradeB; s_gradeC = client.s_gradeC;
-	s_gradeD = client.s_gradeD; s_tournamentsplayed = client.s_tournamentsplayed;
-	s_tournamentswon = client.s_tournamentswon;
-
-	conn=client.conn;
-}
-
 void Client::checkIfStatsSet() {
 	if (sdataSet)
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
+			delete thread;
 			sdataSet=false;
 		}
 	if (sdataSetFailed)
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
+			delete thread;
 			sdataSetFailed=false;
-			thread = std::thread(&Client::getData, this);
+			thread = new std::thread(&Client::getData, this);
 		}
 	if (sdataPutFailed)
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
+			delete thread;
 			sdataPutFailed=false;
-			thread = std::thread(&Client::sendData, this);
+			thread = new std::thread(&Client::sendData, this);
 		}
 }
 
 void Client::checkIfAuth() {
 	if (authresult) {
-		if (thread.joinable()) {
-			thread.join();
+		if (thread->joinable()) {
+			thread->join();
+			delete thread;
 			if (authresult==1) {
 				conn->sendAuthResult(1, *this);
 				guest=false;
@@ -142,13 +113,14 @@ void Client::checkIfAuth() {
 				for (auto it = conn->uploadData.begin(); it != conn->uploadData.end(); it++)
 					if (it->id == id && !it->sdataPut) {
 						std::cout << "Getting data for " << id << " from uploadData" << std::endl;
-						copy(*it);
+						stats = it->stats;
+						sdataInit=true;
 						copyfound=true;
 						it = conn->uploadData.erase(it);
 						break;
 					}
 				if (!copyfound)
-					thread = std::thread(&Client::getData, this);
+					thread = new std::thread(&Client::getData, this);
 				authresult=0;
 				conn->sendClientJoinedServerInfo(*this);
 			}
@@ -157,7 +129,7 @@ void Client::checkIfAuth() {
 				authresult=0;
 			}
 			else {
-				thread = std::thread(&Client::authUser, this);
+				thread = new std::thread(&Client::authUser, this);
 				authresult=0;
 			}
 		}
@@ -227,9 +199,9 @@ void Client::getWinnerData() {
 	room->sendRoundScores();
 	room->updatePlayerScore();
 	if (room->gamemode < 6 && room->gamemode != 3)
-		s_gamesWon++;
-	if (bpm > s_maxBpm && room->roundLenght > sf::seconds(10))
-		s_maxBpm = bpm;
+		stats.gamesWon++;
+	if (bpm > stats.maxBpm && room->roundLenght > sf::seconds(10))
+		stats.maxBpm = bpm;
 }
 
 void Client::sendSignal(sf::Uint8 signalId, int id1, int id2) {
@@ -239,6 +211,6 @@ void Client::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 		packet << (sf::Uint16)id1;
 	if (id2 > -1)
 		packet << (sf::Uint16)id2;
-	if (socket.send(packet) != sf::Socket::Done)
+	if (socket->send(packet) != sf::Socket::Done)
 		std::cout << "Error sending Signal packet to " << id << std::endl;
 }
