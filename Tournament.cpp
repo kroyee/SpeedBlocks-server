@@ -114,7 +114,8 @@ void Node::decideGame() {
 	if (nextgame == nullptr) {
 		tournament.status = 3;
 		tournament.sendStatus();
-		tournament.thread = new std::thread(&Tournament::scoreTournament, &tournament);
+		if (tournament.grade != 5)
+			tournament.thread = new std::thread(&Tournament::scoreTournament, &tournament);
 		return;
 	}
 	

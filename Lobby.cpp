@@ -304,6 +304,7 @@ void Lobby::createTournament() {
 	newTournament.status = 0;
 	newTournament.id = tourn_idcount;
 	newTournament.moderator_list.push_back(conn->sender->id);
+	newTournament.grade = 5;
 	tourn_idcount++;
 	if (tourn_idcount >= 20000)
 		tourn_idcount = 10000;
