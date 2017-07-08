@@ -19,6 +19,10 @@ void Lobby::joinRoom(sf::Uint16 roomid) {
 		if (it.id == roomid) {
 			if (alreadyInside(it, *conn->sender))
 				return;
+			if (it->gamemode == 2 && conn->sender->stats.s_rank != 0) {
+				conn->sender->sendSignal(18);
+				return;
+			}
 			if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (conn->sender->sdataInit || conn->sender->guest)) {
 				sendJoinRoomResponse(it, 1);
 				it.sendNewPlayerInfo();

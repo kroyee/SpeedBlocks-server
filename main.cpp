@@ -37,9 +37,9 @@ int main() {
 
 	cout << "Listener set up" << endl;
 
-	conn.lobby.idcount=1;
+	conn.lobby.idcount=1; // Adding permanent rooms
 	conn.lobby.addRoom("Ranked FFA", 0, 1, 3);
-	conn.lobby.idcount=2;
+	conn.lobby.addRoom("Ranked Hero", 0, 2, 3);
 	conn.lobby.addRoom("Casual", 0, 3, 3);
 	conn.lobby.idcount=10;
 

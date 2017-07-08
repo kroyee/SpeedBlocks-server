@@ -83,3 +83,5 @@
 // 16 - Player is not ready, id1=player id
 
 // 17 - Kick player from a room, id1=reason
+
+// 18 - You can't join the Hero room unless your rank 0
