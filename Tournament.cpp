@@ -397,6 +397,7 @@ void Tournament::putPlayersInBracket() {
 			bracket.games[index].player2 = &player;
 	}*/
 	int counter=0;
+	std::random_shuffle(participants.begin(), participants.end());
 	for (auto&& player : participants) {
 		int z=1, x=counter;
 		float sum=0;

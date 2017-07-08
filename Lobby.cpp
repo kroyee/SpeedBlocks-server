@@ -15,23 +15,23 @@ void Lobby::joinRequest() {
 }
 
 void Lobby::joinRoom(sf::Uint16 roomid) {
-	for (auto&& it : rooms)
-		if (it.id == roomid) {
-			if (alreadyInside(it, *conn->sender))
+	for (auto&& room : rooms)
+		if (room.id == roomid) {
+			if (alreadyInside(room, *conn->sender))
 				return;
-			if (it->gamemode == 2 && conn->sender->stats.s_rank != 0) {
+			if (room.gamemode == 2 && conn->sender->stats.rank != 0) {
 				conn->sender->sendSignal(18);
 				return;
 			}
-			if ((it.currentPlayers < it.maxPlayers || it.maxPlayers == 0) && (conn->sender->sdataInit || conn->sender->guest)) {
-				sendJoinRoomResponse(it, 1);
-				it.sendNewPlayerInfo();
-				it.join(*conn->sender);
+			if ((room.currentPlayers < room.maxPlayers || room.maxPlayers == 0) && (conn->sender->sdataInit || conn->sender->guest)) {
+				sendJoinRoomResponse(room, 1);
+				room.sendNewPlayerInfo();
+				room.join(*conn->sender);
 			}
 			else if (conn->sender->sdataInit || conn->sender->guest)
-				sendJoinRoomResponse(it, 2);
+				sendJoinRoomResponse(room, 2);
 			else
-				sendJoinRoomResponse(it, 3);
+				sendJoinRoomResponse(room, 3);
 		}
 }
 

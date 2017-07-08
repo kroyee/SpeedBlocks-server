@@ -74,7 +74,7 @@ class Tournament {
 public:
 	Tournament(Connections&);
 	Connections& conn;
-	std::list<Participant> participants;
+	std::vector<Participant> participants;
 	std::list<Client*> keepUpdated;
 	Bracket bracket;
 	sf::Uint16 players;
