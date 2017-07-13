@@ -53,6 +53,7 @@ int main() {
 		conn.manageRooms();
 		conn.manageClients();
 		conn.manageTournaments();
+		conn.manageMatchmaking();
 		conn.lobby.challengeHolder.saveChallenges();
 		if (status) {
 			for (auto&& client : conn.clients) {

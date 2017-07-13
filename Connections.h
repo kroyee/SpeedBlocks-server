@@ -66,6 +66,7 @@ public:
 	void manageClients();
 	void manageUploadData();
 	void manageTournaments();
+	void manageMatchmaking();
 
 	void handlePacket();
 	void handleSignal();

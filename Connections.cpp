@@ -74,7 +74,7 @@ void Connections::disconnectClient(Client& client) {
 	sendClientLeftServerInfo(client);
 	if (!client.guest) {
 		uploadData.push_back(client);
-		uploadData.back().uploadTime = serverClock.getElapsedTime() + sf::seconds(0);
+		uploadData.back().uploadTime = serverClock.getElapsedTime() + sf::seconds(240);
 	}
 	if (client.room != nullptr)
 		client.room->leave(client);
@@ -82,6 +82,8 @@ void Connections::disconnectClient(Client& client) {
 		client.tournament->removeObserver(client);
 	if (client.spectating)
 		client.spectating->removeSpectator(client);
+	if (client.matchmaking)
+		lobby.matchmaking1vs1.removeFromQueue(client);
 	selector.remove(*client.socket);
 	client.socket->disconnect();
 	delete client.socket;
@@ -156,6 +158,7 @@ void Connections::sendWelcomeMsg() {
 	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
 	for (auto&& it : lobby.rooms)
 		packet << it.id << it.name << it.currentPlayers << it.maxPlayers;
+	packet << (sf::Uint16)lobby.matchmaking1vs1.queue.size() << (sf::Uint16)lobby.matchmaking1vs1.playing.size();
 	sf::Uint16 adjusterClientCount = clientCount-1;
 	packet << adjusterClientCount;
 	for (auto&& client : clients)
@@ -452,6 +455,12 @@ void Connections::handleSignal() {
 			if (sender->spectating)
 				sender->spectating->removeSpectator(*sender);
 		break;
+		case 21: // Player joined matchmaking
+			lobby.matchmaking1vs1.addToQueue(*sender, serverClock.getElapsedTime());
+		break;
+		case 22: // Player left matchmaking
+			lobby.matchmaking1vs1.removeFromQueue(*sender);
+		break;
 	}
 }
 
@@ -523,6 +532,11 @@ void Connections::manageTournaments() {
 		tournament.checkIfScoreWasSent();
 	}
 	lobby.dailyTournament();
+}
+
+void Connections::manageMatchmaking() {
+	while (lobby.matchmaking1vs1.checkQueue(serverClock.getElapsedTime()))
+		lobby.pairMatchmaking();
 }
 
 bool Connections::getKey() {

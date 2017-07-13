@@ -1,13 +1,14 @@
 #include "Client.h"
 #include "Connections.h"
 #include "JSONWrap.h"
+#include "Room.h"
 using std::cout;
 using std::endl;
 
 Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {
 	socket = new sf::TcpSocket; room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false;
 	sdataPut=false; incLines=0; tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0);
-	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0;
+	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0; matchmaking=false;
 }
 
 void Client::authUser() {
@@ -204,6 +205,11 @@ void Client::getWinnerData() {
 		stats.maxBpm = bpm;
 }
 
+void Client::sendPacket(sf::Packet& packet) {
+	if (socket->send(packet) != sf::Socket::Done)
+		std::cout << "Error sending TCP packet to " << id << std::endl;
+}
+
 void Client::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 	sf::Packet packet;
 	packet << (sf::Uint8)254 << signalId;
@@ -213,4 +219,15 @@ void Client::sendSignal(sf::Uint8 signalId, int id1, int id2) {
 		packet << (sf::Uint16)id2;
 	if (socket->send(packet) != sf::Socket::Done)
 		std::cout << "Error sending Signal packet to " << id << std::endl;
+}
+
+void Client::sendJoinRoomResponse(Room& room, sf::Uint16 joinok) {
+	sf::Packet packet;
+	packet << (sf::Uint8)3 << joinok;
+	if (joinok == 1 || joinok == 1000) {
+		packet << room.seed1 << room.seed2 << room.currentPlayers;
+		for (auto&& client : room.clients)
+			packet << client->id << client->name;
+	}
+	sendPacket(packet);
 }

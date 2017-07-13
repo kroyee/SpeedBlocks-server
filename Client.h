@@ -37,6 +37,7 @@ public:
 	sf::Uint8 authresult;
 
 	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataPutFailed, sdataInit, sdataPut, away, ready;
+	bool matchmaking;
 
 	std::thread *thread;
 
@@ -70,7 +71,9 @@ public:
 	void getRoundData();
 	void getWinnerData();
 
+	void sendPacket(sf::Packet&);
 	void sendSignal(sf::Uint8 signalId, int id1 = -1, int id2 = -1);
+	void sendJoinRoomResponse(Room& room, sf::Uint16 joinok);
 };
 
 #endif

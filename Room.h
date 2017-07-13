@@ -17,7 +17,7 @@ public:
 
 class Room {
 public:
-	Room(Connections* _conn) : conn(_conn), active(false), round(false), waitForReplay(false), tournamentGame(nullptr) {}
+	Room(Connections* _conn);
 	Connections* conn;
 	sf::String name;
 	sf::Uint16 id;
@@ -38,7 +38,7 @@ public:
 	bool active;
 	short countdownSetting;
 	short countdown;
-	bool round, endround, waitForReplay;
+	bool round, endround, waitForReplay, locked;
 	sf::Time countdownTime, roundLenght, timeBetweenRounds;
 	sf::Uint8 playersAlive;
 	sf::Uint16 seed1, seed2;
@@ -51,6 +51,7 @@ public:
 
 	void join(Client&);
 	void leave(Client&);
+	void matchLeaver(Client&);
 
 	bool addSpectator(Client&);
 	void removeSpectator(Client&);
@@ -68,13 +69,14 @@ public:
 	void playerDied();
 	void setInactive();
 	void setActive();
+	void lock();
 	void sendGameData();
 	void makeCountdown();
 	void checkIfRoundEnded();
 	void startCountdown();
 
 	void sendLines(Client& client);
-	void sendNewPlayerInfo();
+	void sendNewPlayerInfo(Client& client);
 	void sendRoundScores();
 
 	void sendSignal(sf::Uint8 signalId, int id1 = -1, int id2 = -1);

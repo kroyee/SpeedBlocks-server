@@ -4,10 +4,11 @@
 using std::cout;
 using std::endl;
 
+Room::Room(Connections* _conn) : conn(_conn), active(false), round(false), waitForReplay(false), locked(false), tournamentGame(nullptr) {}
+
 void Room::startGame() {
 	round=true;
 	playersAlive = activePlayers;
-	transfearScore();
 	leavers.clear();
 	adjust.clear();
 	endround=false;
@@ -55,6 +56,8 @@ void Room::transfearScore() {
 					client.stats.points=0;
 					client.stats.rank++;
 				}
+				client.stats.vspoints = leaver.stats.vspoints;
+				client.stats.heropoints = leaver.stats.heropoints;
 			}
 		for (auto&& client : conn->uploadData)
 			if (leaver.id == client.id) {
@@ -67,8 +70,11 @@ void Room::transfearScore() {
 					client.stats.points=0;
 					client.stats.rank++;
 				}
+				client.stats.vspoints = leaver.stats.vspoints;
+				client.stats.heropoints = leaver.stats.heropoints;
 			}
 	}
+	leavers.clear();
 }
 
 void Room::endRound() {
@@ -85,6 +91,10 @@ void Room::join(Client& jClient) {
 	if (currentPlayers<maxPlayers || maxPlayers == 0) {
 		if (jClient.spectating)
 			jClient.spectating->removeSpectator(jClient);
+		if (jClient.matchmaking && gamemode != 5) {
+			conn->lobby.matchmaking1vs1.removeFromQueue(jClient);
+			jClient.sendSignal(21);
+		}
 		if (!activePlayers)
 			countdown=0;
 		currentPlayers++;
@@ -106,6 +116,7 @@ void Room::join(Client& jClient) {
 void Room::leave(Client& lClient) {
 	for (auto it = clients.begin(); it != clients.end(); it++)
 		if ((*it)->id == lClient.id) {
+			matchLeaver(lClient);
 			currentPlayers--;
 			if (!lClient.away)
 				activePlayers--;
@@ -134,6 +145,25 @@ void Room::leave(Client& lClient) {
 		}
 }
 
+void Room::matchLeaver(Client& lClient) {
+	if (gamemode != 5)
+		return;
+	if (currentPlayers == 2) {
+		if (clients.front()->score == 4 || clients.back()->score == 4) {
+			conn->lobby.matchmaking1vs1.setQueueing(lClient, conn->serverClock.getElapsedTime());
+			lClient.sendSignal(22);
+		}
+		else {
+			conn->lobby.matchmaking1vs1.removeFromQueue(lClient);
+			lClient.sendSignal(21);
+		}
+	}
+	else {
+		conn->lobby.matchmaking1vs1.setQueueing(lClient, conn->serverClock.getElapsedTime());
+		lClient.sendSignal(22);
+	}
+}
+
 bool Room::addSpectator(Client& client) {
 	if (client.room || client.spectating == this)
 		return false;
@@ -153,10 +183,10 @@ void Room::removeSpectator(Client& client) {
 		}
 }
 
-void Room::sendNewPlayerInfo() {
+void Room::sendNewPlayerInfo(Client& client) {
 	conn->packet.clear();
 	sf::Uint8 packetid = 4;
-	conn->packet << packetid << conn->sender->id << conn->sender->name;
+	conn->packet << packetid << client.id << client.name;
 	sendPacket();
 }
 
@@ -266,13 +296,12 @@ void Room::scoreTournamentRound() {
 		if (client->position == 1) {
 			if (tournamentGame->player1->id == client->id) {
 				if (tournamentGame->p1won())
-					active=false;
+					lock();
 			}
 			else if (tournamentGame->player2->id == client->id) {
 				if (tournamentGame->p2won())
-					active=false;
+					lock();
 			}
-			tournamentGame->sendScore();
 			score1vs1Round();
 			return;
 		}
@@ -296,8 +325,28 @@ void Room::score1vs1Round() {
 	if (!winner || !loser)
 		return;
 
+	winner->score++;
 	eloResults.addResult(*winner, *loser, 1);
 	eloResults.calculateResults();
+
+	if (gamemode == 4) {
+		tournamentGame->sendScore();
+		return;
+	}
+
+	conn->packet.clear();
+	conn->packet << (sf::Uint8)24 << winner->id << loser->id;
+	if (winner->score == 4 || loser->score == 4) {
+		lock();
+		conn->packet << (sf::Uint8)255;
+	}
+	else
+		conn->packet << (sf::Uint8)0;
+	conn->packet << (sf::Uint8)0 << (sf::Uint8)winner->score << (sf::Uint8)loser->score;
+	
+	sendPacket();
+
+	timeBetweenRounds = sf::seconds(3);
 }
 
 void Room::scoreHeroRound() {
@@ -356,11 +405,14 @@ void Room::setInactive() {
 }
 
 void Room::setActive() {
-	if (gamemode == 4)
-		if (tournamentGame != nullptr)
-			if (tournamentGame->status == 4)
-				return;
+	if (locked)
+		return;
 	active=true;
+}
+
+void Room::lock() {
+	active=false;
+	locked=true;
 }
 
 void Room::sendGameData() {
@@ -421,6 +473,7 @@ void Room::checkIfRoundEnded() {
 						scoreTournamentRound();
 					else if (gamemode == 5)
 						score1vs1Round();
+					transfearScore();
 					break;
 				}
 			endRound();
@@ -518,7 +571,7 @@ void Room::sendPacket() {
 void Room::sendPacketToPlayers() {
 	for (auto&& client : clients)
 		if (client->socket->send(conn->packet) != sf::Socket::Done)
-			std::cout << "Error sending packet to spectator in room " << id << std::endl;
+			std::cout << "Error sending packet to player in room " << id << std::endl;
 }
 
 void Room::sendPacketToSpectators() {

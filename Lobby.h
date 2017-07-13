@@ -5,6 +5,7 @@
 #include "Room.h"
 #include "Tournament.h"
 #include "Challenges.h"
+#include "VSMatch.h"
 
 class Connections;
 
@@ -23,10 +24,10 @@ public:
 	Tournament* daily;
 
 	ChallengeHolder challengeHolder;
+	VSMatch matchmaking1vs1;
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
-	void sendJoinRoomResponse(Room& room, sf::Uint16 joinok);
 	void joinTournament(sf::Uint16 tournamentid);
 	void joinTournamentGame();
 	void joinAsSpectator();
@@ -52,6 +53,8 @@ public:
 	void playChallenge();
 
 	void getReplay();
+
+	void pairMatchmaking();
 };
 
 #endif

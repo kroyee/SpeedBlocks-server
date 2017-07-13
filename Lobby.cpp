@@ -24,27 +24,15 @@ void Lobby::joinRoom(sf::Uint16 roomid) {
 				return;
 			}
 			if ((room.currentPlayers < room.maxPlayers || room.maxPlayers == 0) && (conn->sender->sdataInit || conn->sender->guest)) {
-				sendJoinRoomResponse(room, 1);
-				room.sendNewPlayerInfo();
+				conn->sender->sendJoinRoomResponse(room, 1);
+				room.sendNewPlayerInfo(*conn->sender);
 				room.join(*conn->sender);
 			}
 			else if (conn->sender->sdataInit || conn->sender->guest)
-				sendJoinRoomResponse(room, 2);
+				conn->sender->sendJoinRoomResponse(room, 2);
 			else
-				sendJoinRoomResponse(room, 3);
+				conn->sender->sendJoinRoomResponse(room, 3);
 		}
-}
-
-void Lobby::sendJoinRoomResponse(Room& room, sf::Uint16 joinok) {
-	conn->packet.clear();
-	sf::Uint8 packetid = 3;
-	conn->packet << packetid << joinok;
-	if (joinok == 1 || 5) {
-		conn->packet << room.seed1 << room.seed2 << room.currentPlayers;
-		for (auto&& client : room.clients)
-			conn->packet << client->id << client->name;
-	}
-	conn->send(*conn->sender);
 }
 
 void Lobby::joinTournament(sf::Uint16 tournamentid) {
@@ -68,14 +56,14 @@ void Lobby::joinTournamentGame() {
 								addTempRoom(4, &game, &tournament);
 							if (alreadyInside(*game.room, *conn->sender))
 								return;
-							sendJoinRoomResponse(*game.room, 1);
-							game.room->sendNewPlayerInfo();
+							conn->sender->sendJoinRoomResponse(*game.room, 1);
+							game.room->sendNewPlayerInfo(*conn->sender);
 							game.room->join(*conn->sender);
 							game.sendScore();
 							game.resetWaitTimeSent();
 							return;
 						}
-						sendJoinRoomResponse(*game.room, 4);
+						conn->sender->sendJoinRoomResponse(*game.room, 4);
 						return;
 					}
 }
@@ -87,7 +75,7 @@ void Lobby::joinAsSpectator() {
 		for (auto&& room : rooms)
 			if (room.id == id) {
 				if (room.addSpectator(*conn->sender))
-					sendJoinRoomResponse(room, 1000);
+					conn->sender->sendJoinRoomResponse(room, 1000);
 				return;
 			}
 	}
@@ -103,7 +91,7 @@ void Lobby::joinAsSpectator() {
 							addTempRoom(4, &game, &tournament);
 						if (!game.room->addSpectator(*conn->sender))
 							return;
-						sendJoinRoomResponse(*game.room, 1000);
+						conn->sender->sendJoinRoomResponse(*game.room, 1000);
 						game.sendScore();
 						game.resetWaitTimeSent();
 						return;
@@ -125,6 +113,7 @@ void Lobby::sendRoomList(Client& client) {
 	for (auto&& room : rooms) {
 		conn->packet << room.id << room.name << room.currentPlayers << room.maxPlayers;
 	}
+	conn->packet << (sf::Uint16)matchmaking1vs1.queue.size() << (sf::Uint16)matchmaking1vs1.playing.size();
 	conn->send(client);
 }
 
@@ -385,8 +374,8 @@ void Lobby::playChallenge() {
 
 	addTempRoom(challengeId);
 
+	conn->sender->sendJoinRoomResponse(tmp_rooms.back(), tmp_rooms.back().gamemode);
 	tmp_rooms.back().join(*conn->sender);
-	sendJoinRoomResponse(tmp_rooms.back(), tmp_rooms.back().gamemode);
 }
 
 void Lobby::getReplay() {
@@ -394,4 +383,16 @@ void Lobby::getReplay() {
 	conn->packet >> type;
 	if (type >= 20000)
 		challengeHolder.updateResult(*conn->sender, type);
+}
+
+void Lobby::pairMatchmaking() {
+	addTempRoom(5);
+	matchmaking1vs1.player1->sendJoinRoomResponse(tmp_rooms.back(), 1);
+	tmp_rooms.back().join(*matchmaking1vs1.player1);
+
+	matchmaking1vs1.player2->sendJoinRoomResponse(tmp_rooms.back(), 1);
+	tmp_rooms.back().sendNewPlayerInfo(*matchmaking1vs1.player2);
+	tmp_rooms.back().join(*matchmaking1vs1.player2);
+
+	matchmaking1vs1.setPlaying();
 }
