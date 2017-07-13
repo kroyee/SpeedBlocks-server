@@ -406,6 +406,7 @@ void Room::checkIfRoundEnded() {
 			cout << "Round ended" << endl;
 			for (auto&& winner : clients)
 				if (winner->alive) {
+					winner->alive=false;
 					winner->position=1;
 					winner->sendSignal(8);
 
