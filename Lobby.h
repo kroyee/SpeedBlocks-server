@@ -11,7 +11,7 @@ class Connections;
 
 class Lobby {
 public:
-	Lobby(Connections* _conn) : conn(_conn), roomCount(0), tournamentCount(0), idcount(0), tourn_idcount(10000), tmp_idcount(20000), daily(nullptr), challengeHolder(*conn) {}
+	Lobby(Connections* _conn);
 	Connections* conn;
 	sf::String welcomeMsg;
 
@@ -21,10 +21,12 @@ public:
 	sf::Uint8 roomCount, tournamentCount;
 	sf::Uint16 idcount, tourn_idcount, tmp_idcount;
 
-	Tournament* daily;
+	Tournament *daily, *weekly, *monthly, *grandslam;
 
 	ChallengeHolder challengeHolder;
 	VSMatch matchmaking1vs1;
+
+	sf::Time saveTournamentsTime;
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
@@ -48,7 +50,7 @@ public:
 	void startTournament();
 	void removeTournamentObserver();
 	void createTournament();
-	void dailyTournament();
+	void regularTournaments();
 
 	void playChallenge();
 

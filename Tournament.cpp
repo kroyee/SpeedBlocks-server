@@ -257,7 +257,7 @@ void Bracket::sendAllReadyAlerts() {
 			game.sendReadyAlert();
 }
 
-Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false), scoreSentFailed(false) {}
+Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false), scoreSentFailed(false), updated(false) {}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -268,6 +268,7 @@ bool Tournament::addPlayer(Client& client) {
 	par.name = client.name;
 	participants.push_back(par);
 	players++;
+	updated=true;
 	return true;
 }
 
@@ -280,6 +281,7 @@ bool Tournament::addPlayer(const sf::String& name, sf::Uint16 id) {
 	par.name = name;
 	participants.push_back(par);
 	players++;
+	updated=true;
 	return true;
 }
 
@@ -288,6 +290,7 @@ bool Tournament::removePlayer(sf::Uint16 id) {
 		if (it->id == id) {
 			it = participants.erase(it);
 			players--;
+			updated=true;
 			return true;
 		}
 	return false;
@@ -482,7 +485,7 @@ void Tournament::sendTournament() {
 	sf::Uint8 packetid = 23;
 	conn.packet << packetid;
 
-	conn.packet << id << rounds << sets << (double)startingTime;
+	conn.packet << id << grade << rounds << sets << (double)startingTime;
 
 	sendParticipantList(true);
 	sendModeratorList(true);

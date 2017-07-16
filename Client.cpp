@@ -8,7 +8,7 @@ using std::endl;
 Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {
 	socket = new sf::TcpSocket; room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false;
 	sdataPut=false; incLines=0; tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0);
-	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0; matchmaking=false;
+	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0; matchmaking=false; updateStatsTime=sf::seconds(0);
 }
 
 void Client::authUser() {
@@ -177,7 +177,7 @@ void Client::getRoundData() {
 	alive=false;
 	position=room->playersAlive;
 	ready=false;
-	room->playerDied();
+	room->playerDied(*this);
 	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
 	conn->packet >> bpm >> spm;
 

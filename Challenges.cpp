@@ -116,6 +116,7 @@ void ChallengeHolder::saveChallenges() {
 			score.update=false;
 		}
 		chall.update=false;
+		file.close();
 	}
 }
 
@@ -153,6 +154,8 @@ void ChallengeHolder::loadChallenges() {
 		challengeCount++;
 		challenges.back().loadScores();
 	}
+
+	file.close();
 
 	updateTime = conn.serverClock.getElapsedTime() + sf::seconds(60);
 }

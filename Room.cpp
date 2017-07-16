@@ -1,6 +1,7 @@
 #include "Room.h"
 #include "Connections.h"
 #include "Tournament.h"
+#include <algorithm>
 using std::cout;
 using std::endl;
 
@@ -122,7 +123,7 @@ void Room::leave(Client& lClient) {
 				activePlayers--;
 			if (lClient.alive) {
 				lClient.position=playersAlive;
-				playerDied();
+				playerDied(lClient);
 			}
 			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
 				leavers.push_back(lClient);
@@ -190,10 +191,6 @@ void Room::sendNewPlayerInfo(Client& client) {
 	sendPacket();
 }
 
-//Sorting function
-bool sortClient(Client* client1, Client* client2) {
-	return client1->score > client2->score;
-}
 void Room::sendRoundScores() {
 	conn->packet.clear();
 	sf::Uint8 packetid = 8, count=0;
@@ -201,7 +198,7 @@ void Room::sendRoundScores() {
 		if (client->position)
 			count++;
 	conn->packet << packetid << count;
-	clients.sort(&sortClient);
+	clients.sort([](Client* c1, Client* c2) { return c1->score > c2->score; });
 	for (auto&& client : clients) {
 		if (client->position) {
 			conn->packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
@@ -225,68 +222,52 @@ void Room::scoreFFARound() {
 	if (currentPlayers + leavers.size() < 2)
 		return;
 
-	short playersinround=0;
+	std::vector<Client*> inround;
 	float avgrank=0;
+
 	for (auto&& client : clients) {
-		if (client->position)
+		if (client->position) {
 			client->score += currentPlayers - client->position;
-		if (client->position && client->stats.rank && !client->guest) {
-			playersinround++;
-			avgrank+=client->stats.rank;
+			if (client->stats.rank && !client->guest) {
+				inround.push_back(client);
+				avgrank+=client->stats.rank;
+			}
 		}
 	}
 	for (auto&& client : leavers) {
-		if (client.stats.rank) {
-			playersinround++;
+		if (client.position && client.stats.rank) {
+			inround.push_back(&client);
 			avgrank+=client.stats.rank;
 		}
 	}
-	avgrank/=playersinround; // Determine number of players to be scored & avg rank
+	float playersinround = inround.size();
+	avgrank/=playersinround;
 
-	std::cout << "Scoring: " << playersinround << " players, avg rank: " << avgrank << std::endl;
+	std::cout << "Scoring: " << (int)playersinround << " players, avg rank: " << avgrank << std::endl;
 
-	float* pointcoff = new float[playersinround];
-	Client** inround = new Client*[playersinround];
+	std::sort(inround.begin(), inround.end(), [](Client* c1, Client* c2) { return c1->position < c2->position; });
 
-	short lookingfor=0, position=1;
-	while (lookingfor<playersinround) {
-		for (auto&& client : clients)
-			if (position == client->position && client->stats.rank && !client->guest) {
-				inround[lookingfor] = client;
-				lookingfor++;
-				break;
-			}
-		for (auto&& client : leavers)
-			if (position == client.position && client.stats.rank) {
-				inround[lookingfor] = &client;
-				lookingfor++;
-				break;
-			}
-		position++;
-	}
-
-	for (short i=0; i<playersinround; i++) {
-		pointcoff[i] = ((((float)i+1)/(float)playersinround) - 1.0/(float)playersinround  - (1.0-1.0/(float)playersinround)/2.0) * (-1.0/ ((1.0-1.0/(float)playersinround)/2.0) );
-		pointcoff[i] += (inround[i]->stats.rank - avgrank) * 0.05 + 0.2;
-		inround[i]->stats.points += 100*pointcoff[i]*(inround[i]->stats.rank/5.0);
-		if (inround[i]->stats.points > 1000) {
-			inround[i]->stats.rank--;
-			inround[i]->stats.points=0;
+	int i=0;
+	for (auto client : inround) {
+		float pointcoff = ((((float)i+1)/(float)playersinround) - 1.0/(float)playersinround  - (1.0-1.0/(float)playersinround)/2.0) * (-1.0/ ((1.0-1.0/(float)playersinround)/2.0) );
+		pointcoff += (client->stats.rank - avgrank) * 0.05 + 0.2;
+		client->stats.points += 100*pointcoff*(client->stats.rank/5.0);
+		if (client->stats.points > 1000) {
+			client->stats.rank--;
+			client->stats.points=0;
 		}
-		else if (inround[i]->stats.points < -1000) {
-			if (inround[i]->stats.rank == 25)
-				inround[i]->stats.points = -1000;
+		else if (client->stats.points < -1000) {
+			if (client->stats.rank == 25)
+				client->stats.points = -1000;
 			else {
-				inround[i]->stats.rank++;
-				inround[i]->stats.points=0;
+				client->stats.rank++;
+				client->stats.points=0;
 			}
 		}
 
-		std::cout << (int)inround[i]->id << ": " << pointcoff[i] << " -> " << (int)inround[i]->stats.points << " & " << (int)inround[i]->stats.rank << std::endl;
+		i++;
+		std::cout << client->id << ": " << pointcoff << " -> " << client->stats.points << " & " << (int)client->stats.rank << std::endl;
 	}
-
-	delete[] pointcoff;
-	delete[] inround;
 }
 
 void Room::scoreTournamentRound() {
@@ -375,14 +356,25 @@ void Room::scoreHeroRound() {
 	eloResults.calculateResults();
 }
 
-// Rnew = Rold + K * (ActualPoints - ExpectedPoints)
-
-void Room::playerDied() {
+void Room::playerDied(Client& died) {
+	int second=0;
+	bool leaderDied=false;
 	Adjust adj;
 	adj.amount=0;
-	for (auto&& client : clients)
-		if (client->linesSent > adj.amount)
+	for (auto&& client : clients) {
+		if (client->linesSent > adj.amount) {
+			second = adj.amount;
 			adj.amount = client->linesSent;
+			if (died.id == client->id)
+				leaderDied=true;
+			else
+				leaderDied=false;
+		}
+		else if (client->linesSent > second)
+			second = client->linesSent;
+	}
+	if (leaderDied)
+		adj.amount = second;
 	playersAlive--;
 	adj.players=playersAlive;
 	adjust.push_back(adj);

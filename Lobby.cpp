@@ -1,7 +1,13 @@
 #include "Lobby.h"
 #include "Connections.h"
+#include <fstream>
 using std::cout;
 using std::endl;
+
+Lobby::Lobby(Connections* _conn) :
+	conn(_conn), roomCount(0), tournamentCount(0), idcount(0),
+	tourn_idcount(10000), tmp_idcount(20000), daily(nullptr), weekly(nullptr), monthly(nullptr),
+	grandslam(nullptr), challengeHolder(*conn), saveTournamentsTime(sf::seconds(0)) {}
 
 void Lobby::joinRequest() {
 	sf::Uint16 id;
@@ -305,37 +311,26 @@ void Lobby::createTournament() {
 	tournaments.push_back(newTournament);
 }
 
-void Lobby::dailyTournament() {
+void Lobby::regularTournaments() {
 	if (daily == nullptr) {
 		time_t now = time(0);
 		struct tm* nowtm = gmtime(&now);
 		sf::String name;
 		switch (nowtm->tm_wday) {
-			case 0:
-				name = "Sunday ";
-			break;
-			case 1:
-				name = "Monday ";
-			break;
-			case 2:
-				name = "Tuesday ";
-			break;
-			case 3:
-				name = "Wednesday ";
-			break;
-			case 4:
-				name = "Thursday ";
-			break;
-			case 5:
-				name = "Friday ";
-			break;
-			case 6:
-				name = "Saturday ";
-			break;
+			case 0: name = "Sunday "; break;
+			case 1: name = "Monday "; break;
+			case 2: name = "Tuesday "; break;
+			case 3: name = "Wednesday "; break;
+			case 4: name = "Thursday "; break;
+			case 5: name = "Friday "; break;
+			case 6: name = "Saturday "; break;
 		}
 		name += "showdown";
 		addTournament(name, 0);
-		tournaments.back().setStartingTime(0, 19, 30);
+		if (nowtm->tm_wday == 0)
+			tournaments.back().setStartingTime(0, 17, 30);
+		else
+			tournaments.back().setStartingTime(0, 19, 30);
 		tournaments.back().grade = 4;
 		daily = &tournaments.back();
 	}
@@ -351,6 +346,104 @@ void Lobby::dailyTournament() {
 			daily = nullptr;
 		}
 	}
+
+	if (weekly == nullptr) {
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		addTournament("Weekly brawl", 0);
+		if (nowtm->tm_wday == 0)
+			tournaments.back().setStartingTime(0, 19, 30);
+		else
+			tournaments.back().setStartingTime(7-nowtm->tm_wday, 19, 30);
+		tournaments.back().grade = 3;
+		weekly = &tournaments.back();
+	}
+	else {
+		sf::Uint16 oldDay, newDay;
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		oldDay = nowtm->tm_yday;
+		nowtm = gmtime(&weekly->startingTime);
+		newDay = nowtm->tm_yday;
+		if (oldDay-newDay > 2) {
+			removeTournament(weekly->id);
+			weekly = nullptr;
+		}
+	}
+
+	if (monthly == nullptr) {
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		sf::String name;
+		switch (nowtm->tm_mon) {
+			case 0: name = "January "; break;
+			case 1: name = "Febuary "; break;
+			case 2: name = "March "; break;
+			case 3: name = "April "; break;
+			case 4: name = "May "; break;
+			case 5: name = "June "; break;
+			case 6: name = "July "; break;
+			case 7: name = "August "; break;
+			case 8: name = "September "; break;
+			case 9: name = "October "; break;
+			case 10: name = "November "; break;
+			case 11: name = "Christmas "; break;
+		}
+		name += "rumble";
+		addTournament(name, 0);
+		tournaments.back().setStartingTime(26-nowtm->tm_mday, 19, 00);
+		tournaments.back().grade = 2;
+		monthly = &tournaments.back();
+	}
+	else {
+		sf::Uint8 oldMonth, newMonth;
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		newMonth = nowtm->tm_mon;
+		nowtm = gmtime(&monthly->startingTime);
+		oldMonth = nowtm->tm_mon;
+		if (oldMonth != newMonth) {
+			removeTournament(monthly->id);
+			monthly = nullptr;
+		}
+	}
+
+	if (grandslam == nullptr) {
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		addTournament("Battle of Titans", 0);
+		int count = 80-nowtm->tm_yday;
+		while (count<0)
+			count += 91;
+		tournaments.back().setStartingTime(count, 19, 00);
+		tournaments.back().grade = 1;
+		grandslam = &tournaments.back();
+	}
+	else {
+		sf::Uint16 oldDay, newDay;
+		time_t now = time(0);
+		struct tm* nowtm = gmtime(&now);
+		newDay = nowtm->tm_yday;
+		nowtm = gmtime(&grandslam->startingTime);
+		oldDay = nowtm->tm_yday;
+		if (newDay - oldDay > 30) {
+			removeTournament(grandslam->id);
+			grandslam = nullptr;
+		}
+	}
+
+	//Remove grade 5 tournaments that are a day old
+	for (auto it = tournaments.begin(); it != tournaments.end(); it++)
+		if (it->status == 3 && it->grade == 5) {
+			sf::Uint16 oldDay, newDay;
+			time_t now = time(0);
+			struct tm* nowtm = gmtime(&now);
+			newDay = nowtm->tm_yday;
+			nowtm = gmtime(&it->startingTime);
+			oldDay = nowtm->tm_yday;
+			if (newDay != oldDay)
+				removeTournament(it->id);
+		}
 }
 
 void Lobby::playChallenge() {

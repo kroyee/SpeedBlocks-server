@@ -66,7 +66,7 @@ public:
 
 	void transfearScore();
 	void updatePlayerScore();
-	void playerDied();
+	void playerDied(Client&);
 	void setInactive();
 	void setActive();
 	void lock();

@@ -45,7 +45,7 @@ public:
 	sf::Uint16 linesSent, linesReceived, linesBlocked, bpm, spm, score;
 	float incLines, linesAdjusted;
 
-	sf::Time uploadTime;
+	sf::Time uploadTime, updateStatsTime;
 	sf::Time lastHeardFrom;
 
 	sf::Uint8 pingId;

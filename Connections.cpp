@@ -489,6 +489,10 @@ void Connections::manageClients() {
 			it = clients.erase(it);
 			continue;
 		}
+		if (serverClock.getElapsedTime() - it->updateStatsTime > sf::seconds(60)) {
+			it->updateStatsTime = serverClock.getElapsedTime();
+			it->thread = new std::thread(&Client::sendData, &(*it));
+		}
 		it->checkIfStatsSet();
 		it->checkIfAuth();
 		it->sendLines();
@@ -531,7 +535,7 @@ void Connections::manageTournaments() {
 		tournament.checkWaitTime();
 		tournament.checkIfScoreWasSent();
 	}
-	lobby.dailyTournament();
+	lobby.regularTournaments();
 }
 
 void Connections::manageMatchmaking() {

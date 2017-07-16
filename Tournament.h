@@ -89,7 +89,7 @@ public:
 	sf::Uint8 grade;
 
 	std::thread *thread;
-	bool scoreSent, scoreSentFailed;
+	bool scoreSent, scoreSentFailed, updated;
 
 	bool addPlayer(Client& client);
 	bool addPlayer(const sf::String& name, sf::Uint16 id);
