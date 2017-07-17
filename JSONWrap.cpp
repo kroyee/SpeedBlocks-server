@@ -75,8 +75,8 @@ void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 		else if (key == "points") stats.points = value-1000;
 		else if (key == "heropoints") stats.heropoints = value;
 		else if (key == "herorank") stats.herorank = value;
-		else if (key == "vspoints") stats.vspoints = value;
-		else if (key == "vsrank") stats.vsrank = value;
+		else if (key == "1vs1points") stats.vspoints = value;
+		else if (key == "1vs1rank") stats.vsrank = value;
 		else if (key == "avgbpm") stats.avgBpm = value;
 		else if (key == "gamesplayed") stats.gamesPlayed = value;
 		else if (key == "gameswon") stats.gamesWon = value;

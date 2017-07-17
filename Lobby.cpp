@@ -447,7 +447,7 @@ void Lobby::regularTournaments() {
 }
 
 void Lobby::saveTournaments() {
-	if (conn->serverClock.getElapsedTime() - saveTournamentsTime < sf::seconds(6) || !tournamentsUpdated)
+	if (conn->serverClock.getElapsedTime() - saveTournamentsTime < sf::seconds(60) || !tournamentsUpdated)
 		return;
 
 	system("rm Tournaments/*");
