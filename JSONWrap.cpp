@@ -35,8 +35,8 @@ void JSONWrap::addClientStats(Client& client) {
     addPair("totalbpm", client.stats.totalBpm);
     addPair("totalgames", client.stats.totalGames); 
     addPair("herorank", client.stats.herorank);
-    addPair("vspoints", client.stats.vspoints);
-    addPair("vsrank", client.stats.vsrank);
+    addPair("1vs1points", client.stats.vspoints);
+    addPair("1vs1rank", client.stats.vsrank);
 }
 
 std::string JSONWrap::getJsonString() {

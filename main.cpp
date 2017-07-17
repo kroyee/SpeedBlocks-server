@@ -24,6 +24,7 @@ int main() {
 	srand(time(NULL));
 
 	Connections conn;
+	conn.lobby.loadTournaments();
 
 	if (!conn.getKey()) {
 		cout << "Failed to get serverkey" << endl;

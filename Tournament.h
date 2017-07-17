@@ -119,6 +119,8 @@ public:
 	void checkIfScoreWasSent();
 
 	void scoreTournament();
+
+	void save();
 };
 
 #endif

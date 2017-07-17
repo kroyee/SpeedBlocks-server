@@ -7,7 +7,7 @@ using std::endl;
 Lobby::Lobby(Connections* _conn) :
 	conn(_conn), roomCount(0), tournamentCount(0), idcount(0),
 	tourn_idcount(10000), tmp_idcount(20000), daily(nullptr), weekly(nullptr), monthly(nullptr),
-	grandslam(nullptr), challengeHolder(*conn), saveTournamentsTime(sf::seconds(0)) {}
+	grandslam(nullptr), challengeHolder(*conn), saveTournamentsTime(sf::seconds(0)), tournamentsUpdated(false) {}
 
 void Lobby::joinRequest() {
 	sf::Uint16 id;
@@ -444,6 +444,98 @@ void Lobby::regularTournaments() {
 			if (newDay != oldDay)
 				removeTournament(it->id);
 		}
+}
+
+void Lobby::saveTournaments() {
+	if (conn->serverClock.getElapsedTime() - saveTournamentsTime < sf::seconds(6) || !tournamentsUpdated)
+		return;
+
+	system("rm Tournaments/*");
+
+	std::ofstream file("Tournaments/tournament.list");
+	if (!file.is_open()) {
+		cout << "Failed to save tournaments" << endl;
+		return;
+	}
+
+	file << daily->name.toAnsiString() << endl << weekly->name.toAnsiString() << endl;
+	file << monthly->name.toAnsiString() << endl << grandslam->name.toAnsiString() << endl;
+	daily->save();
+	weekly->save();
+	monthly->save();
+	grandslam->save();
+
+	for (auto&& tournament : tournaments)
+		if (tournament.id != daily->id && tournament.id != weekly->id && tournament.id != monthly->id && tournament.id != grandslam->id) {
+			file << tournament.name.toAnsiString() << endl;
+			tournament.save();
+		}
+
+	file.close();
+
+	saveTournamentsTime = conn->serverClock.getElapsedTime();
+	tournamentsUpdated=false;
+}
+
+void Lobby::loadTournaments() {
+	std::ifstream file("Tournaments/tournament.list");
+	if (!file.is_open()) {
+		cout << "Failed to load tournaments" << endl;
+		return;
+	}
+
+	std::string line;
+	int count=-1;
+	while (!file.eof()) {
+		count++;
+		getline(file, line);
+		if (line == "")
+			continue;
+		std::ifstream tfile("Tournaments/" + line);
+		if (!tfile.is_open()) {
+			cout << "Failed to load tournament " << line << endl;
+			continue;
+		}
+
+		sf::Uint16 mod, player_id;
+		sf::Uint8 grade, rounds, sets;
+		sf::String name, player_name;
+		time_t startingTime;
+		getline(tfile, line); name = line;
+		getline(tfile, line); grade = stoi(line);
+		getline(tfile, line); startingTime = stol(line);
+		getline(tfile, line); rounds = stoi(line);
+		getline(tfile, line); sets = stoi(line);
+		getline(tfile, line); int c = stoi(line);
+		for (int i=0; i<c; i++) {
+			getline(tfile, line); mod = stoi(line);
+			if (!i) addTournament(name, mod);
+			//else add a moderator (no function implemented for it yet)
+		}
+		getline(tfile, line); c = stoi(line);
+		for (int i=0; i<c; i++) {
+			getline(tfile, line); player_id = stoi(line);
+			getline(tfile, line); player_name = line;
+			tournaments.back().addPlayer(player_name, player_id);
+		}
+		tournaments.back().sets = sets;
+		tournaments.back().rounds = rounds;
+		tournaments.back().startingTime = startingTime;
+		tournaments.back().grade = grade;
+
+		cout << "Count = " << count << endl;
+		if (count==0)
+			daily = &tournaments.back();
+		else if (count==1)
+			weekly = &tournaments.back();
+		else if (count==2)
+			monthly = &tournaments.back();
+		else if (count==3)
+			grandslam = &tournaments.back();
+
+		tfile.close();
+	}
+	file.close();
 }
 
 void Lobby::playChallenge() {

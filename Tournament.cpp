@@ -2,6 +2,7 @@
 #include <iostream>
 #include "Connections.h"
 #include "JSONWrap.h"
+#include <fstream>
 using std::cout;
 using std::endl;
 
@@ -269,6 +270,7 @@ bool Tournament::addPlayer(Client& client) {
 	participants.push_back(par);
 	players++;
 	updated=true;
+	conn.lobby.tournamentsUpdated=true;
 	return true;
 }
 
@@ -282,6 +284,7 @@ bool Tournament::addPlayer(const sf::String& name, sf::Uint16 id) {
 	participants.push_back(par);
 	players++;
 	updated=true;
+	conn.lobby.tournamentsUpdated=true;
 	return true;
 }
 
@@ -291,6 +294,7 @@ bool Tournament::removePlayer(sf::Uint16 id) {
 			it = participants.erase(it);
 			players--;
 			updated=true;
+			conn.lobby.tournamentsUpdated=true;
 			return true;
 		}
 	return false;
@@ -663,4 +667,26 @@ void Tournament::scoreTournament() {
         std::cout << "scoreTournament failed request" << std::endl;
         scoreSentFailed = true;
     }
+}
+
+void Tournament::save() {
+	if (/*!updated || */status != 0)
+		return;
+	cout << "Saving tournament " << name.toAnsiString() << endl;
+	std::ofstream file("Tournaments/" + name);
+	if (!file.is_open()) {
+		cout << "Failed to save tournament " << name.toAnsiString() << endl;
+		return;
+	}
+	file << name.toAnsiString() << endl << (int)grade << endl;
+	file << startingTime << endl << (int)rounds << endl << (int)sets << endl;
+	file << moderator_list.size() << endl;
+	for (auto mod : moderator_list)
+		file << mod << endl;
+	file << players << endl;
+	for (auto player : participants)
+		file << player.id << endl << player.name.toAnsiString() << endl;
+
+	updated=false;
+	file.close();
 }

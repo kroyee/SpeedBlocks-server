@@ -27,6 +27,7 @@ public:
 	VSMatch matchmaking1vs1;
 
 	sf::Time saveTournamentsTime;
+	bool tournamentsUpdated;
 
 	void joinRequest();
 	void joinRoom(sf::Uint16 roomid);
@@ -51,6 +52,8 @@ public:
 	void removeTournamentObserver();
 	void createTournament();
 	void regularTournaments();
+	void saveTournaments();
+	void loadTournaments();
 
 	void playChallenge();
 

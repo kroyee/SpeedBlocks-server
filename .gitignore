@@ -6,6 +6,8 @@ SpeedBlocks-server
 Makefile
 /Challenges/*
 !/Challenges/challenges.list
+/Tournaments/*
+!/Tournaments/.gitkeep
 
 # Cmake stuff
 CMakeCache.txt
