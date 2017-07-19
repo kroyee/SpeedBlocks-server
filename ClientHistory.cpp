@@ -6,6 +6,8 @@ using std::endl;
 PlayfieldHistory::PlayfieldHistory(Client& _client) : client(_client), timeDiffDirectionCount(0) {}
 
 void PlayfieldHistory::validate() {
+	if (!client.room)
+		return;
 	auto thisFrame = states.begin();
 	auto lastFrame = states.begin();
 	lastFrame++;
