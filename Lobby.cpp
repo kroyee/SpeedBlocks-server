@@ -465,11 +465,24 @@ void Lobby::saveTournaments() {
 	monthly->save();
 	grandslam->save();
 
-	for (auto&& tournament : tournaments)
-		if (tournament.id != daily->id && tournament.id != weekly->id && tournament.id != monthly->id && tournament.id != grandslam->id) {
-			file << tournament.name.toAnsiString() << endl;
+	for (auto&& tournament : tournaments){
+		bool update=true;
+		if (daily)
+			if (daily->id == tournament.id)
+				update=false;
+		if (weekly)
+			if (weekly->id == tournament.id)
+				update=false;
+		if (monthly)
+			if (monthly->id == tournament.id)
+				update=false;
+		if (grandslam)
+			if (grandslam->id == tournament.id)
+				update=false;
+
+		if (update)
 			tournament.save();
-		}
+	}
 
 	file.close();
 

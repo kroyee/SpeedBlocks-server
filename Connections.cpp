@@ -33,6 +33,7 @@ bool Connections::receive() {
 			clients.back().address = clients.back().socket->getRemoteAddress();
 			clients.back().lastHeardFrom = serverClock.getElapsedTime();
 			clients.back().guest=true;
+			clients.back().updateStatsTime = serverClock.getElapsedTime();
 			selector.add(*clients.back().socket);
 			clientCount++;
 			sendWelcomeMsg();

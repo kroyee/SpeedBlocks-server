@@ -33,10 +33,8 @@ void JSONWrap::addClientStats(Client& client) {
     addPair("points", client.stats.points+1000);
     addPair("heropoints", client.stats.heropoints);
     addPair("totalbpm", client.stats.totalBpm);
-    addPair("totalgames", client.stats.totalGames); 
-    addPair("herorank", client.stats.herorank);
+    addPair("totalgames", client.stats.totalGames);
     addPair("1vs1points", client.stats.vspoints);
-    addPair("1vs1rank", client.stats.vsrank);
 }
 
 std::string JSONWrap::getJsonString() {
@@ -67,7 +65,7 @@ void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 			break;
 		start = stop+1;
 		stop = jsonString.find(",", start);
-		sf::Uint32 value = stoi(jsonString.substr(start, stop-start));
+		sf::Uint32 value = stol(jsonString.substr(start, stop-start));
 		start = stop+1;
 		if (key == "maxcombo") stats.maxCombo = value;
 		else if (key == "maxbpm") stats.maxBpm = value;
