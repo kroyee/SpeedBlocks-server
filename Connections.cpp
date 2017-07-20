@@ -34,6 +34,7 @@ bool Connections::receive() {
 			clients.back().lastHeardFrom = serverClock.getElapsedTime();
 			clients.back().guest=true;
 			clients.back().updateStatsTime = serverClock.getElapsedTime();
+			clients.back().history.client = &clients.back();
 			selector.add(*clients.back().socket);
 			clientCount++;
 			sendWelcomeMsg();
@@ -282,6 +283,7 @@ void Connections::validateUDP() {
 void Connections::getGamestate() {
 	sf::Uint8 datacount;
 	packet >> datacount;
+	cout << "Gamestate from client " << sender->id << endl;
 	for (int c=0; packet >> extractor.tmp[c]; c++) {}
 
 	if ((datacount<50 && sender->datacount>200) || sender->datacount<datacount) {
@@ -498,7 +500,7 @@ void Connections::manageClients() {
 		it->checkIfAuth();
 		it->sendLines();
 	}
-	
+
 	manageUploadData();
 }
 

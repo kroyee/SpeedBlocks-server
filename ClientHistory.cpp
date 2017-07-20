@@ -3,22 +3,22 @@
 using std::cout;
 using std::endl;
 
-PlayfieldHistory::PlayfieldHistory(Client& _client) : client(_client), timeDiffDirectionCount(0) {}
+PlayfieldHistory::PlayfieldHistory(Client* _client) : client(_client), timeDiffDirectionCount(0) {}
 
 void PlayfieldHistory::validate() {
-	if (!client.room)
+	if (!client->room)
 		return;
 	auto thisFrame = states.begin();
 	auto lastFrame = states.begin();
 	lastFrame++;
-	if (lastFrame == states.end() || !client.room)
+	if (lastFrame == states.end() || !client->room)
 		return;
 	// The received time data is milliseconds as an uint16, and here we assume that ~13s has not passed between
 	// states and increment by 65535 to store the values as a continous uint32 value
 	while (thisFrame->time < lastFrame->time)
 		thisFrame->time += 65536;
 
-	thisFrame->received = client.room->start.getElapsedTime().asMilliseconds();
+	thisFrame->received = client->room->start.getElapsedTime().asMilliseconds();
 	sf::Int16 timeDiff = thisFrame->received - thisFrame->time;
 
 	if (timeDiff > maxTimeDiff)
@@ -35,9 +35,9 @@ void PlayfieldHistory::validate() {
 	}
 
 	if (timeDiffDirectionCount > 25) {
-		cout << client.name.toAnsiString() << " was kicked from " << client.room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
-		client.sendSignal(17, 1);
-		client.room->leave(client);
+		cout << client->name.toAnsiString() << " was kicked from " << client->room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
+		client->sendSignal(17, 1);
+		client->room->leave(*client);
 	}
 
 	if (thisFrame->time > lastEveningOutDirectionCount) {

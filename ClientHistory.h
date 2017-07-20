@@ -16,8 +16,8 @@ public:
 
 class PlayfieldHistory {
 public:
-	PlayfieldHistory(Client&);
-	Client& client;
+	PlayfieldHistory(Client*);
+	Client* client;
 	std::list<HistoryState> states;
 
 	sf::Int16 lastTimeDiff;

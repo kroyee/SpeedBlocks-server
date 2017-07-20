@@ -5,7 +5,7 @@
 using std::cout;
 using std::endl;
 
-Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(*this) {
+Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false), history(this) {
 	socket = new sf::TcpSocket; room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false;
 	sdataPut=false; incLines=0; tournament = nullptr; spectating=nullptr; pingId=255; pingStart=sf::seconds(0);
 	pingTime=sf::seconds(0); sdataPutFailed=false; authresult=0; matchmaking=false; updateStatsTime=sf::seconds(0);
