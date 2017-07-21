@@ -229,6 +229,8 @@ void Lobby::signUpForTournament(Client& client) {
 			for (auto&& player : tournament.participants)
 				if (player.id == client.id)
 					return;
+			if (tournament.status != 1)
+				return;
 			tournament.addPlayer(client);
 			tournament.sendParticipantList();
 			return;

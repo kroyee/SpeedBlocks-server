@@ -16,7 +16,7 @@ public:
 
 class PlayfieldHistory {
 public:
-	PlayfieldHistory(Client*);
+	PlayfieldHistory();
 	Client* client;
 	std::list<HistoryState> states;
 

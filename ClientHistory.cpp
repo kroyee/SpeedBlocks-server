@@ -3,9 +3,13 @@
 using std::cout;
 using std::endl;
 
-PlayfieldHistory::PlayfieldHistory(Client* _client) : client(_client), timeDiffDirectionCount(0) {}
+PlayfieldHistory::PlayfieldHistory() : client(nullptr), timeDiffDirectionCount(0) {}
 
 void PlayfieldHistory::validate() {
+	if (!client) {
+		cout << "No client set for history" << endl;
+		return;
+	}
 	if (!client->room)
 		return;
 	auto thisFrame = states.begin();

@@ -6,6 +6,11 @@
 using std::cout;
 using std::endl;
 
+Connections::Connections() : tcpPort(21512), sender(nullptr), idcount(60000),
+	clientVersion(7), clientCount(0), lobby(this) {
+	udpSock.bind(21514); selector.add(udpSock);
+}
+
 bool Connections::setUpListener() {
 	if (listener.listen(tcpPort) == sf::Socket::Done) {
 		selector.add(listener);
