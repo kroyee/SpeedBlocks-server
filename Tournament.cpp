@@ -618,7 +618,8 @@ void Tournament::checkIfStart() {
 						cont += player.name + " ";
 					jwrap.addPair("content", cont);
 					jwrap.addPair("username", "SB_Notify");
-					jwrap.sendPost("/api/webhooks/344576316537831426/axcdVXba3DVITX-NV_xY_HwXEOaLtcI0SivT840HjDBEqFUTAUdeCLIEwbENTSsec2Vr", "https://discordapp.com", "application/json");
+					jwrap.addPair("key", conn.serverkey);
+					jwrap.sendPost("/forward_to_discord.php");
 				}
 		}
 }
