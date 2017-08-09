@@ -23,7 +23,7 @@ public:
 	sf::SocketSelector selector;
 	sf::UdpSocket udpSock;
 	sf::Socket::Status status;
-	sf::String serverkey;
+	sf::String serverkey, challongekey;
 
 	sf::Clock serverClock;
 
@@ -60,7 +60,6 @@ public:
 	void validateClient();
 	void validateUDP();
 	void getGamestate();
-	void getPing();
 
 	void manageRooms();
 	void manageClients();

@@ -7,7 +7,7 @@ using std::cout;
 using std::endl;
 
 Connections::Connections() : tcpPort(21512), sender(nullptr), idcount(60000),
-	clientVersion(7), clientCount(0), lobby(this) {
+	clientVersion(8), clientCount(0), lobby(this) {
 	udpSock.bind(21514); selector.add(udpSock);
 }
 
@@ -190,8 +190,6 @@ void Connections::sendAuthResult(sf::Uint8 authresult, Client& client) {
 }
 
 void Connections::sendChatMsg() {
-	if (!sender->room && !sender->spectating)
-		return;
 	//Get msg
 	sf::Uint8 type;
 	sf::String to = "", msg;
@@ -288,7 +286,6 @@ void Connections::validateUDP() {
 void Connections::getGamestate() {
 	sf::Uint8 datacount;
 	packet >> datacount;
-	cout << "Gamestate from client " << sender->id << endl;
 	for (int c=0; packet >> extractor.tmp[c]; c++) {}
 
 	if ((datacount<50 && sender->datacount>200) || sender->datacount<datacount) {
@@ -302,19 +299,6 @@ void Connections::getGamestate() {
 		extractor.extract(sender->history.states.front());
 		sender->history.validate();
 	}
-}
-
-void Connections::getPing() {
-	sf::Uint8 pingId;
-	packet >> pingId;
-
-	if (pingId != sender->pingId) {
-		sender->pingId = pingId;
-		sender->pingStart = serverClock.getElapsedTime();
-		sendUDP(*sender);
-	}
-	else
-		sender->pingTime = serverClock.getElapsedTime() - sender->pingStart;
 }
 
 void Connections::handlePacket() {
@@ -369,7 +353,7 @@ void Connections::handlePacket() {
 			getGamestate();
 		break;
 		case 102: // Ping packet
-			getPing();
+			sender->ping.get(serverClock.getElapsedTime(), *sender);
 		break;
 		case 254: // Signal packet
 			handleSignal();
@@ -559,6 +543,8 @@ bool Connections::getKey() {
 	if (file.is_open()) {
 		getline(file, line);
 		serverkey = line;
+		getline(file, line);
+		challongekey = line;
 		return true;
 	}
 	return false;

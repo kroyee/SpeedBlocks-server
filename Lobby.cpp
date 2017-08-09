@@ -218,7 +218,7 @@ void Lobby::removeTournament(sf::Uint16 id) {
 }
 
 void Lobby::signUpForTournament(Client& client) {
-	if (client.id >= 60000) {
+	if (client.guest) {
 		client.sendSignal(2);
 		return;
 	}
@@ -229,7 +229,7 @@ void Lobby::signUpForTournament(Client& client) {
 			for (auto&& player : tournament.participants)
 				if (player.id == client.id)
 					return;
-			if (tournament.status != 1)
+			if (tournament.status != 0)
 				return;
 			tournament.addPlayer(client);
 			tournament.sendParticipantList();
@@ -296,7 +296,7 @@ void Lobby::removeTournamentObserver() {
 }
 
 void Lobby::createTournament() {
-	if (conn->sender->id >= 60000) {
+	if (conn->sender->guest) {
 		conn->sender->sendSignal(2);
 		return;
 	}
@@ -519,6 +519,10 @@ void Lobby::loadTournaments() {
 		getline(tfile, line); name = line;
 		getline(tfile, line); grade = stoi(line);
 		getline(tfile, line); startingTime = stol(line);
+		if (startingTime < time(0)) {
+			tfile.close();
+			continue;
+		}
 		getline(tfile, line); rounds = stoi(line);
 		getline(tfile, line); sets = stoi(line);
 		getline(tfile, line); int c = stoi(line);
@@ -538,7 +542,6 @@ void Lobby::loadTournaments() {
 		tournaments.back().startingTime = startingTime;
 		tournaments.back().grade = grade;
 
-		cout << "Count = " << count << endl;
 		if (count==0)
 			daily = &tournaments.back();
 		else if (count==1)

@@ -12,7 +12,6 @@ Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false) {
 }
 
 void Client::authUser() {
-	std::cout << "Authing user..." << std::endl;
 	sf::Http::Request request("/hash_check.php", sf::Http::Request::Post);
 
     sf::String stream = "hash=" + name;
@@ -34,8 +33,7 @@ void Client::authUser() {
         	authresult=1;
         }
         else {
-        	std::cout << "Auth failed" << std::endl;
-        	std::cout << response.getBody() << std::endl;
+        	std::cout << "Auth failed: " << response.getBody() << std::endl;
         	authresult=2;
         }
     }
@@ -52,7 +50,8 @@ void Client::sendData() {
     sf::Http::Response response = jwrap.sendPost("put_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
-        	std::cout << "Client " << (int)id << ": " << response.getBody() << std::endl;
+    		if (response.getBody() != "New records created successfully")
+        		std::cout << "Client " << (int)id << ": " << response.getBody() << std::endl;
         	sdataSet=true;
     }
     else {
@@ -191,7 +190,6 @@ void Client::getWinnerData() {
 	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
 	conn->packet >> bpm >> spm;
 	if (room->round) {
-		cout << "Ending round now" << endl;
 		position=1;
 		room->endRound();
 		if (room->gamemode >= 20000)

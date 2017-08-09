@@ -7,6 +7,7 @@
 #include <iostream>
 #include "MingwConvert.h"
 #include "ClientHistory.h"
+#include "PingHandle.h"
 
 class Room;
 class Connections;
@@ -51,6 +52,7 @@ public:
 	sf::Uint8 pingId;
 	sf::Time pingStart, pingTime;
 
+	PingHandle ping;
 	StatsHolder stats;
 
 	PlayfieldHistory history;

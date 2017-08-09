@@ -243,8 +243,6 @@ void Room::scoreFFARound() {
 	float playersinround = inround.size();
 	avgrank/=playersinround;
 
-	std::cout << "Scoring: " << (int)playersinround << " players, avg rank: " << avgrank << std::endl;
-
 	std::sort(inround.begin(), inround.end(), [](Client* c1, Client* c2) { return c1->position < c2->position; });
 
 	int i=0;
@@ -266,7 +264,6 @@ void Room::scoreFFARound() {
 		}
 
 		i++;
-		std::cout << client->id << ": " << pointcoff << " -> " << client->stats.points << " & " << (int)client->stats.rank << std::endl;
 	}
 }
 
@@ -447,7 +444,6 @@ void Room::makeCountdown() {
 void Room::checkIfRoundEnded() {
 	if (round) {
 		if (endround) {
-			cout << "Round ended" << endl;
 			for (auto&& winner : clients)
 				if (winner->alive) {
 					winner->alive=false;
@@ -497,8 +493,6 @@ void Room::sendLines(Client& client) {
 	client.linesAdjusted+=lineAdjust;
 	actualSend=(float)amount-lineAdjust;
 	actualSend/= ((float)playersAlive-1.0);
-	std::cout << "amount: " << (int)amount << " adjust: " << lineAdjust << " players: " << (int)playersAlive << std::endl;
-	std::cout << "Sending " << actualSend << " to room from " << client.id << std::endl;
 	for (auto&& sendTo : clients)
 		if (sendTo->id != client.id && sendTo->alive)
 			sendTo->incLines+=actualSend;
