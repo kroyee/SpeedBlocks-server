@@ -91,11 +91,11 @@ void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 	}
 }
 
-sf::Http::Response JSONWrap::sendPost(const sf::String& _request) {
+sf::Http::Response JSONWrap::sendPost(const sf::String& _request, const sf::String& _url, const sf::String& contenttype) {
 	sf::Http::Request request(_request, sf::Http::Request::Post);
 	request.setBody(getJsonString());
-    request.setField("Content-Type", "application/x-www-form-urlencoded");
-	sf::Http http("http://localhost");
+    request.setField("Content-Type", contenttype);
+	sf::Http http(_url);
     return http.sendRequest(request);
 }
 

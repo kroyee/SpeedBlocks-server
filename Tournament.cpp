@@ -258,7 +258,9 @@ void Bracket::sendAllReadyAlerts() {
 			game.sendReadyAlert();
 }
 
-Tournament::Tournament(Connections& _conn) : conn(_conn), players(0), startingTime(0), status(0), scoreSent(false), scoreSentFailed(false), updated(false) {}
+Tournament::Tournament(Connections& _conn) :
+conn(_conn), players(0), startingTime(0), status(0), scoreSent(false),
+scoreSentFailed(false), updated(false), notify(false) {}
 
 bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
@@ -585,6 +587,7 @@ void Tournament::startTournament() {
 	if (status == 0) {
 		if (players < 2) {
 			status = 4;
+			notify = true;
 			sendStatus();
 			return;
 		}
@@ -603,9 +606,21 @@ void Tournament::startTournament() {
 
 void Tournament::checkIfStart() {
 	if (status < 2)
-		if (startingTime)
+		if (startingTime) {
 			if (time(NULL) > startingTime)
 				startTournament();
+			if (!notify)
+				if (time(NULL) > startingTime-1200) {
+					notify=true;
+					JSONWrap jwrap;
+					sf::String cont = "<@&340947653447647243> Tournament Notification\n" + name + " is starting in 20 minutes\nParticipants: ";
+					for (auto& player : participants)
+						cont += player.name + " ";
+					jwrap.addPair("content", cont);
+					jwrap.addPair("username", "SB_Notify");
+					jwrap.sendPost("/api/webhooks/344576316537831426/axcdVXba3DVITX-NV_xY_HwXEOaLtcI0SivT840HjDBEqFUTAUdeCLIEwbENTSsec2Vr", "https://discordapp.com", "application/json");
+				}
+		}
 }
 
 void Tournament::checkWaitTime() {

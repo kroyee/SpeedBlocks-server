@@ -20,7 +20,7 @@ public:
 	void addClientStats(Client& client);
 	std::string getJsonString();
 	void jsonToClientStats(StatsHolder& stats, std::string jsonString);
-	sf::Http::Response sendPost(const sf::String& _request);
+	sf::Http::Response sendPost(const sf::String& _request, const sf::String& _url="http://localhost", const sf::String& contenttype="application/x-www-form-urlencoded");
 	void clear();
 };
 
