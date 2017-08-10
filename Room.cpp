@@ -34,7 +34,8 @@ void Room::startGame() {
 }
 
 void Room::startCountdown() {
-	countdown=countdownSetting;
+	countdownTime=sf::seconds(0);
+	countdown=true;
 	playersAlive=activePlayers;
 	start.restart();
 	seed1 = rand();
@@ -83,7 +84,7 @@ void Room::endRound() {
 		for (auto&& client : clients)
 			client->ready=false;
 	round=false;
-	countdown=0;
+	countdown=false;
 	roundLenght = start.restart();
 	sendSignal(7);
 }
@@ -96,8 +97,6 @@ void Room::join(Client& jClient) {
 			conn->lobby.matchmaking1vs1.removeFromQueue(jClient);
 			jClient.sendSignal(21);
 		}
-		if (!activePlayers)
-			countdown=0;
 		currentPlayers++;
 		activePlayers++;
 		if (activePlayers > 1 || gamemode >= 20000)
@@ -389,7 +388,7 @@ void Room::setInactive() {
 	else
 		endRound();
 	round=false;
-	countdown=0;
+	countdown=false;
 	start.restart();
 }
 
@@ -397,6 +396,7 @@ void Room::setActive() {
 	if (locked)
 		return;
 	active=true;
+	countdown=false;
 }
 
 void Room::lock() {
@@ -420,12 +420,25 @@ void Room::sendGameData() {
 void Room::makeCountdown() {
 	if (!round) {
 		if (countdown) {
-			if (start.getElapsedTime() > sf::seconds(1)) {
-				countdown--;
+			sf::Time t = start.getElapsedTime();
+			if (t > sf::seconds(3)) {
 				start.restart();
-				sendSignalToActive(5, countdown);
-				if (countdown == 0)
-					startGame();
+				sendSignalToActive(5, 1);
+				sendSignalToAway(5, 0);
+				sendSignalToSpectators(5, 0);
+				startGame();
+			}
+			else if (t > countdownTime) {
+				countdownTime+=sf::milliseconds(200);
+				for (auto& client : clients) {
+					if (!client->away) {
+						sf::Uint16 compensate = std::min(client->ping.getAverage()/2, client->ping.getLowest());
+						compensate=3000-t.asMilliseconds()-compensate;
+						conn->packet.clear();
+						conn->packet << (sf::Uint8)103 << compensate;
+						conn->sendUDP(*client);
+					}
+				}
 			}
 		}
 		else if (timeBetweenRounds != sf::seconds(0) && start.getElapsedTime() > timeBetweenRounds)

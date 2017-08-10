@@ -36,10 +36,8 @@ public:
 	//Room setting
 	sf::Clock start;
 	bool active;
-	short countdownSetting;
-	short countdown;
-	bool round, endround, waitForReplay, locked;
-	sf::Time countdownTime, roundLenght, timeBetweenRounds;
+	bool round, endround, waitForReplay, locked, countdown;
+	sf::Time roundLenght, timeBetweenRounds;
 	sf::Uint8 playersAlive;
 	sf::Uint16 seed1, seed2;
 
@@ -48,6 +46,8 @@ public:
 	Tournament* tournament;
 
 	EloResults eloResults;
+
+	sf::Time countdownTime;
 
 	void join(Client&);
 	void leave(Client&);

@@ -131,7 +131,6 @@ void Lobby::addRoom(const sf::String& name, short max, sf::Uint16 mode, sf::Uint
 	rooms.back().maxPlayers = max;
 	rooms.back().currentPlayers = 0;
 	rooms.back().activePlayers = 0;
-	rooms.back().countdownSetting = 3;
 	rooms.back().gamemode = mode;
 	rooms.back().timeBetweenRounds = sf::seconds(delay);
 	cout << "Adding room " << rooms.back().name.toAnsiString() << " as " << rooms.back().id << endl;
@@ -150,7 +149,6 @@ void Lobby::addTempRoom(sf::Uint16 mode, Node* game, Tournament* _tournament) {
 	tmp_rooms.back().maxPlayers = 2;
 	tmp_rooms.back().currentPlayers = 0;
 	tmp_rooms.back().activePlayers = 0;
-	tmp_rooms.back().countdownSetting = 3;
 	tmp_rooms.back().gamemode = mode;
 	tmp_rooms.back().timeBetweenRounds = sf::seconds(0);
 	tmp_rooms.back().tournamentGame = game;

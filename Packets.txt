@@ -58,7 +58,7 @@
 
 // 4 - Countdown started for a new round, id1=seed1 id2=seed2
 
-// 5 - Countdown is ongoing, sending current count, id1=countdown
+// 5 - Countdown ended, id1=are you active or not (1/0)
 
 // 6 - Inform room that a player left, id1=leaver-id
 
