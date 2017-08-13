@@ -265,6 +265,7 @@ void Connections::validateClient() {
 		sender->stats.rank=25;
 		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 		sendClientJoinedServerInfo(*sender);
+		sender->sendAlert("First time here using the latest version i see.\nTake the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
 	}
 	else
 		sender->thread = new std::thread(&Client::authUser, sender);

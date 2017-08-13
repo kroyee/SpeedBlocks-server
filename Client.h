@@ -15,7 +15,7 @@ class Tournament;
 
 class StatsHolder {
 public:
-	sf::Uint8 maxCombo, maxBpm, rank;
+	sf::Uint8 maxCombo, maxBpm, rank, alert;
 	sf::Int16 points;
 	sf::Uint16 heropoints, herorank, vspoints, vsrank, gradeA, gradeB, gradeC, gradeD;
 	float avgBpm;
@@ -76,6 +76,7 @@ public:
 	void sendPacket(sf::Packet&);
 	void sendSignal(sf::Uint8 signalId, int id1 = -1, int id2 = -1);
 	void sendJoinRoomResponse(Room& room, sf::Uint16 joinok);
+	void sendAlert(const sf::String& msg);
 };
 
 #endif

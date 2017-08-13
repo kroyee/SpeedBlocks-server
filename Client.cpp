@@ -84,6 +84,10 @@ void Client::checkIfStatsSet() {
 			thread->join();
 			delete thread;
 			sdataSet=false;
+			if (stats.alert) {
+				sendAlert("First time here using the latest version i see. Take the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
+				stats.alert=false;
+			}
 		}
 	if (sdataSetFailed)
 		if (thread->joinable()) {
@@ -225,5 +229,11 @@ void Client::sendJoinRoomResponse(Room& room, sf::Uint16 joinok) {
 		for (auto&& client : room.clients)
 			packet << client->id << client->name;
 	}
+	sendPacket(packet);
+}
+
+void Client::sendAlert(const sf::String& msg) {
+	sf::Packet packet;
+	packet << (sf::Uint8)10 << msg;
 	sendPacket(packet);
 }

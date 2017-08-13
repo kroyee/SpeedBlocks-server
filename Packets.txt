@@ -24,6 +24,8 @@
 
 // 9 - Sending authresults back to client
 
+// 10 - send Alert to player
+
 // 12 - Chat message
 
 // 16 - Send room list
