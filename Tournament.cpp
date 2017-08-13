@@ -613,13 +613,13 @@ void Tournament::checkIfStart() {
 				if (time(NULL) > startingTime-1200) {
 					notify=true;
 					JSONWrap jwrap;
-					sf::String cont = "<@&340947653447647243> Tournament Notification\n" + name + " is starting in 20 minutes\nParticipants: ";
+					sf::String cont = "<@&340947653447647243> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
 					for (auto& player : participants)
 						cont += player.name + " ";
 					jwrap.addPair("content", cont);
 					jwrap.addPair("username", "SB_Notify");
 					jwrap.addPair("key", conn.serverkey);
-					jwrap.sendPost("/forward_to_discord.php");
+					cout << jwrap.sendPost("/forward_to_discord.php").getBody() << endl;
 				}
 		}
 }

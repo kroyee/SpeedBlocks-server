@@ -177,8 +177,7 @@ void Client::getRoundData() {
 	position=room->playersAlive;
 	ready=false;
 	room->playerDied(*this);
-	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
-	conn->packet >> bpm >> spm;
+	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked >> bpm;
 
 	room->sendSignal(13, id, position);
 	room->sendSignalToSpectators(13, id, position);
@@ -187,8 +186,7 @@ void Client::getRoundData() {
 void Client::getWinnerData() {
 	if (room == nullptr)
 		return;
-	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked;
-	conn->packet >> bpm >> spm;
+	conn->packet >> maxCombo >> linesSent >> linesReceived >> linesBlocked >> bpm;
 	if (room->round) {
 		position=1;
 		room->endRound();

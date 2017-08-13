@@ -196,13 +196,13 @@ void Room::sendRoundScores() {
 	for (auto&& client : clients)
 		if (client->position)
 			count++;
-	conn->packet << packetid << count;
+	conn->packet << packetid << (sf::Uint16)roundLenght.asSeconds() << count;
 	clients.sort([](Client* c1, Client* c2) { return c1->score > c2->score; });
 	for (auto&& client : clients) {
 		if (client->position) {
 			conn->packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
-			conn->packet << client->linesBlocked << client->bpm << client->spm << client->stats.rank << client->position;
-			conn->packet << client->score << client->linesAdjusted;
+			conn->packet << client->linesBlocked << client->bpm << client->stats.rank << client->position;
+			conn->packet << client->score << client->linesAdjusted << client->stats.points;
 		}
 	}
 	sendPacket();
