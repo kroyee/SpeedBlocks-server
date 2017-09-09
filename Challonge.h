@@ -2,7 +2,6 @@
 #define CHALLONGE_H
 
 #include <SFML/Network.hpp>
-#include "json.hpp"
 
 class challongeHandler {
 	sf::String challongekey;
