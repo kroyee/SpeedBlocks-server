@@ -202,7 +202,7 @@ void Room::sendRoundScores() {
 		if (client->position) {
 			conn->packet << client->id << client->maxCombo << client->linesSent << client->linesReceived;
 			conn->packet << client->linesBlocked << client->bpm << client->stats.rank << client->position;
-			conn->packet << client->score << client->linesAdjusted << client->stats.points;
+			conn->packet << client->score << client->linesAdjusted << sf::Uint16(client->stats.points+1000);
 		}
 	}
 	sendPacket();

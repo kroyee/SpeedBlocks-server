@@ -565,13 +565,9 @@ void Lobby::playChallenge() {
 
 	sf::Uint16 challengeId;
 	conn->packet >> challengeId;
-	bool valid=false;
-	for (auto&& chall : challengeHolder.challenges)
-		if (chall.id == challengeId)
-			valid=true;
-
-	if (!valid)
-		return;
+	if (std::none_of(challengeHolder.challenges.begin(), challengeHolder.challenges.end(), [&](std::unique_ptr<Challenge> &chall){
+		return chall->id == challengeId;
+	})) return;
 
 	addTempRoom(challengeId);
 
