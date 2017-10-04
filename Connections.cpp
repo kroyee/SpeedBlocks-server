@@ -7,7 +7,7 @@ using std::cout;
 using std::endl;
 
 Connections::Connections() : tcpPort(21512), sender(nullptr), idcount(60000),
-	clientVersion(110), clientCount(0), lobby(this) {
+	clientVersion(111), clientCount(0), lobby(this) {
 	udpSock.bind(21514); selector.add(udpSock);
 }
 
