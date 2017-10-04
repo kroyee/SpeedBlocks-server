@@ -36,7 +36,7 @@ public:
 
 	std::vector<Column> columns;
 	std::list<Score> scores;
-	sf::Uint16 scoreCount;
+	sf::Uint16 scoreCount=0;
 
 	bool update;
 
