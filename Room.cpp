@@ -26,8 +26,12 @@ void Room::startGame() {
 		client->linesAdjusted=0;
 		client->history.clear();
 		if (!client->away) {
-			client->stats.gamesPlayed++;
-			client->stats.totalGames++;
+			if (gamemode < 20000) {
+				client->stats.gamesPlayed++;
+				client->stats.totalGames++;
+			}
+			else
+				client->stats.challenges_played++;
 			client->alive=true;
 		}
 	}

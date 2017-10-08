@@ -36,6 +36,7 @@ void JSONWrap::addClientStats(Client& client) {
     addPair("totalgames", client.stats.totalGames);
     addPair("1vs1points", client.stats.vspoints);
     addPair("alert", client.stats.alert);
+    addPair("challenges_played", client.stats.challenges_played);
 }
 
 std::string JSONWrap::getJsonString() {
@@ -88,6 +89,7 @@ void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 		else if (key == "gradeC") stats.gradeC = value;
 		else if (key == "gradeD") stats.gradeD = value;
 		else if (key == "alert") stats.alert = value;
+		else if (key == "challenges_played") stats.challenges_played = value;
 		if (stop == std::string::npos)
 			break;
 	}

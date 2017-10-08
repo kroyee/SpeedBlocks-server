@@ -19,7 +19,7 @@ public:
 	sf::Int16 points;
 	sf::Uint16 heropoints, herorank, vspoints, vsrank, gradeA, gradeB, gradeC, gradeD;
 	float avgBpm;
-	sf::Uint32 gamesPlayed, gamesWon, totalGames, totalBpm, tournamentsplayed, tournamentswon;
+	sf::Uint32 gamesPlayed, gamesWon, totalGames, totalBpm, tournamentsplayed, tournamentswon, challenges_played;
 };
 
 class Client {
