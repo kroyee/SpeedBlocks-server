@@ -102,4 +102,11 @@ public:
 	bool sort(Score& score1, Score& score2);
 };
 
+class CH_Cheese30L : public Challenge {
+public:
+	CH_Cheese30L();
+	void setColumns(Client&, sf::Uint16 blocks, Score& score);
+	bool checkResult(Client& client, sf::Uint32 duration, sf::Uint16 blocks, Score& score);
+};
+
 #endif

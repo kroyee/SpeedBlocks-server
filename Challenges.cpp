@@ -67,6 +67,7 @@ void ChallengeHolder::loadChallenges() {
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Race));
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Cheese));
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Survivor));
+	challenges.push_back(std::unique_ptr<Challenge>(new CH_Cheese30L));
 
 	challengeCount = challenges.size();
 
@@ -323,4 +324,30 @@ bool CH_Survivor::checkResult(Client& client, sf::Uint32 duration, sf::Uint16, S
 
 bool CH_Survivor::sort(Score& score1, Score& score2) {
 	return score1.duration > score2.duration;
+}
+
+/////////////////// Cheese40L //////////////////////
+
+CH_Cheese30L::CH_Cheese30L() {
+	name = "Cheese 30L";
+	id = 20003;
+	label = "Clear 30 lines of garbage";
+	columns.push_back(Column(0, "Name"));
+	columns.push_back(Column(200, "Blocks"));
+	columns.push_back(Column(270, "Time"));
+	loadScores();
+}
+
+void CH_Cheese30L::setColumns(Client&, sf::Uint16 blocks, Score& score) {
+	score.column[0] = to_string(blocks);
+	score.column[1] = durationToString(score.duration);
+}
+
+bool CH_Cheese30L::checkResult(Client&, sf::Uint32 duration, sf::Uint16 blocks, Score& score) {
+	if (duration < score.duration) {
+		score.column[0] = to_string(blocks);
+		score.column[1] = durationToString(duration);
+		return true;
+	}
+	return false;
 }
