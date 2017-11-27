@@ -1,5 +1,6 @@
 #include "JSONWrap.h"
 #include "Client.h"
+#include "Connections.h"
 #include <iostream>
 using std::cout;
 using std::endl;
@@ -22,21 +23,60 @@ void JSONWrap::addPair(const sf::String& key, sf::Uint32 value) {
 	pairs.push_back(newpair);
 }
 
-void JSONWrap::addClientStats(Client& client) {
-	addPair("user_id", client.id);
+void JSONWrap::add1v1Stats(Client& client) {
+	clear();
+	addPair("key", client.conn->serverkey);
+	addPair("table_name", "1v1");
+	addPair("points", client.stats.vsPoints);
+	addPair("rank", client.stats.vsRank);
+	addPair("played", client.stats.vsPlayed);
+	addPair("won", client.stats.vsWon);
+}
+
+void JSONWrap::addFFAStats(Client& client) {
+	clear();
+	addPair("key", client.conn->serverkey);
+	addPair("table_name", "ffa");
+	addPair("points", client.stats.ffaPoints);
+	addPair("rank", client.stats.ffaRank);
+	addPair("played", client.stats.ffaPlayed);
+	addPair("won", client.stats.ffaWon);
+}
+
+void JSONWrap::addHeroStats(Client& client) {
+	clear();
+	addPair("key", client.conn->serverkey);
+	addPair("table_name", "hero");
+	addPair("points", client.stats.heroPoints);
+	addPair("rank", client.stats.heroRank);
+	addPair("played", client.stats.heroPlayed);
+	addPair("won", client.stats.heroWon);
+}
+
+void JSONWrap::addTournamentStats(Client& client) {
+	clear();
+	addPair("key", client.conn->serverkey);
+	addPair("table_name", "tstats");
+	addPair("gradeA", client.stats.gradeA);
+	addPair("gradeB", client.stats.gradeB);
+	addPair("gradeC", client.stats.gradeC);
+	addPair("gradeD", client.stats.gradeD);
+	addPair("played", client.stats.tournamentsPlayed);
+	addPair("won", client.stats.tournamentsWon);
+}
+
+void JSONWrap::addGeneralStats(Client& client) {
+	clear();
+	addPair("key", client.conn->serverkey);
+	addPair("table_name", "gstats");
 	addPair("maxcombo", client.stats.maxCombo);
 	addPair("maxbpm", client.stats.maxBpm);
-    addPair("gamesplayed", client.stats.gamesPlayed);
-    addPair("avgbpm", client.stats.avgBpm);
-    addPair("gameswon", client.stats.gamesWon);
-    addPair("rank", client.stats.rank);
-    addPair("points", client.stats.points+1000);
-    addPair("heropoints", client.stats.heropoints);
-    addPair("totalbpm", client.stats.totalBpm);
-    addPair("totalgames", client.stats.totalGames);
-    addPair("1vs1points", client.stats.vspoints);
-    addPair("alert", client.stats.alert);
-    addPair("challenges_played", client.stats.challenges_played);
+	addPair("alert", client.stats.alert);
+	addPair("avgbpm", client.stats.avgBpm);
+	addPair("played", client.stats.totalPlayed);
+	addPair("won", client.stats.totalWon);
+	addPair("totalbpm", client.stats.totalBpm);
+	addPair("challenges_played", client.stats.challenges_played);
 }
 
 std::string JSONWrap::getJsonString() {
@@ -55,41 +95,61 @@ std::string JSONWrap::getJsonString() {
 	return jsonString;
 }
 
+#define MAP_VARIABLE(KEY,VARIABLE) if (key == #KEY) stats.VARIABLE = value
+
+void mapStringToVariable(StatsHolder& stats, std::string key, sf::Uint32 value) {
+	// General
+	MAP_VARIABLE(gstatsmaxcombo, maxCombo);
+	else MAP_VARIABLE(gstatsmaxbpm, maxBpm);
+	else MAP_VARIABLE(gstatsavgbpm, avgBpm);
+	else MAP_VARIABLE(gstatswon, totalWon);
+	else MAP_VARIABLE(gstatsplayed, totalPlayed);
+	else MAP_VARIABLE(gstatstotalbpm, totalBpm);
+	else MAP_VARIABLE(gstatsalert, alert);
+
+	// 1v1
+	else MAP_VARIABLE(1v1rank, vsRank);
+	else MAP_VARIABLE(1v1points, vsPoints);
+	else MAP_VARIABLE(1v1played, vsPlayed);
+	else MAP_VARIABLE(1v1won, vsWon);
+
+	// Hero
+	else MAP_VARIABLE(heropoints, heroPoints);
+	else MAP_VARIABLE(herorank, heroRank);
+	else MAP_VARIABLE(heroplayed, heroPlayed);
+	else MAP_VARIABLE(herowon, heroWon);
+
+	// FFA
+	else MAP_VARIABLE(ffapoints, ffaPoints);
+	else MAP_VARIABLE(ffarank, ffaRank);
+	else MAP_VARIABLE(ffaplayed, ffaPlayed);
+	else MAP_VARIABLE(ffawon, ffaWon);
+	
+	// Tournament
+	else MAP_VARIABLE(tstatsplayed, tournamentsPlayed);
+	else MAP_VARIABLE(tstatswon, tournamentsWon);
+	else MAP_VARIABLE(tstatsgradeA, gradeA);
+	else MAP_VARIABLE(tstatsgradeB, gradeB);
+	else MAP_VARIABLE(tstatsgradeC, gradeC);
+	else MAP_VARIABLE(tstatsgradeD, gradeD);
+}
+
 void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 	std::size_t start=0, stop;
-	bool end=false;
+	if (jsonString.size() < 3)
+		return;
 	jsonString.erase(jsonString.begin());
 	jsonString.erase(jsonString.end()-1);
-	while (!end) {
+	while (true) {
 		stop = jsonString.find(":", start);
-		std::string key = jsonString.substr(start+1, stop-start-2);
 		if (stop == std::string::npos)
 			break;
+		std::string key = jsonString.substr(start+1, stop-start-2);
 		start = stop+1;
 		stop = jsonString.find(",", start);
 		sf::Uint32 value = stol(jsonString.substr(start, stop-start));
 		start = stop+1;
-		if (key == "maxcombo") stats.maxCombo = value;
-		else if (key == "maxbpm") stats.maxBpm = value;
-		else if (key == "rank") stats.rank = value;
-		else if (key == "points") stats.points = value-1000;
-		else if (key == "heropoints") stats.heropoints = value;
-		else if (key == "herorank") stats.herorank = value;
-		else if (key == "1vs1points") stats.vspoints = value;
-		else if (key == "1vs1rank") stats.vsrank = value;
-		else if (key == "avgbpm") stats.avgBpm = value;
-		else if (key == "gamesplayed") stats.gamesPlayed = value;
-		else if (key == "gameswon") stats.gamesWon = value;
-		else if (key == "totalgames") stats.totalGames = value;
-		else if (key == "totalbpm") stats.totalBpm = value;
-		else if (key == "tournamentsplayed") stats.tournamentsplayed = value;
-		else if (key == "tournamentswon") stats.tournamentswon = value;
-		else if (key == "gradeA") stats.gradeA = value;
-		else if (key == "gradeB") stats.gradeB = value;
-		else if (key == "gradeC") stats.gradeC = value;
-		else if (key == "gradeD") stats.gradeD = value;
-		else if (key == "alert") stats.alert = value;
-		else if (key == "challenges_played") stats.challenges_played = value;
+		mapStringToVariable(stats, key, value);
 		if (stop == std::string::npos)
 			break;
 	}

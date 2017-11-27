@@ -71,7 +71,7 @@ bool VSMatch::checkQueue(const sf::Time& _time) {
 			if (p1 == p2)
 				continue;
 			
-			sf::Int32 match = p1->client->stats.vspoints - p2->client->stats.vspoints;
+			sf::Int32 match = p1->client->stats.vsPoints - p2->client->stats.vsPoints;
 			
 			if (match < 0)
 				match*=-1;

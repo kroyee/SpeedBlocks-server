@@ -7,7 +7,7 @@ using std::cout;
 using std::endl;
 
 Connections::Connections() : tcpPort(21512), sender(nullptr), idcount(60000),
-	clientVersion(113), clientCount(0), lobby(this) {
+	clientVersion(113), clientCount(0), lobby(*this) {
 	udpSock.bind(21514); selector.add(udpSock);
 }
 
@@ -163,8 +163,8 @@ void Connections::sendWelcomeMsg() {
 	packet.clear();
 	sf::Uint8 packetid = 0;
 	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
-	for (auto&& it : lobby.rooms)
-		packet << it.id << it.name << it.currentPlayers << it.maxPlayers;
+	for (auto& it : lobby.rooms)
+		packet << it->id << it->name << it->currentPlayers << it->maxPlayers;
 	packet << (sf::Uint16)lobby.matchmaking1vs1.queue.size() << (sf::Uint16)lobby.matchmaking1vs1.playing.size();
 	sf::Uint16 adjusterClientCount = clientCount-1;
 	packet << adjusterClientCount;
@@ -262,7 +262,6 @@ void Connections::validateClient() {
 	}
 	else if (guest) {
 		sendAuthResult(2, *sender);
-		sender->stats.rank=25;
 		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
 		sendClientJoinedServerInfo(*sender);
 		sender->sendAlert("First time here using the latest version i see.\nTake the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
@@ -459,17 +458,17 @@ void Connections::handleSignal() {
 
 void Connections::manageRooms() {
 	for (auto&& room : lobby.rooms) {
-		if (room.active) {
-			room.sendGameData();
-			room.makeCountdown();
-			room.checkIfRoundEnded();
+		if (room->active) {
+			room->sendGameData();
+			room->makeCountdown();
+			room->checkIfRoundEnded();
 		}
 	}
 	for (auto&& room : lobby.tmp_rooms) {
-		if (room.active) {
-			room.sendGameData();
-			room.makeCountdown();
-			room.checkIfRoundEnded();
+		if (room->active) {
+			room->sendGameData();
+			room->makeCountdown();
+			room->checkIfRoundEnded();
 		}
 	}
 	lobby.removeIdleRooms();

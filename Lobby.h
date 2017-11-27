@@ -6,17 +6,18 @@
 #include "Tournament.h"
 #include "Challenges.h"
 #include "VSMatch.h"
+#include <memory>
 
 class Connections;
 
 class Lobby {
 public:
-	Lobby(Connections* _conn);
-	Connections* conn;
+	Lobby(Connections& _conn);
+	Connections& conn;
 	sf::String welcomeMsg;
 
-	std::list<Room> rooms;
-	std::list<Room> tmp_rooms;
+	std::list< std::unique_ptr<Room> > rooms;
+	std::list< std::unique_ptr<Room> > tmp_rooms;
 	std::list<Tournament> tournaments;
 	sf::Uint8 roomCount, tournamentCount;
 	sf::Uint16 idcount, tourn_idcount, tmp_idcount;
@@ -36,6 +37,7 @@ public:
 	void joinAsSpectator();
 	bool alreadyInside(const Room&, const Client&);
 
+	void makeRoom(sf::Uint16 mode);
 	void addRoom(const sf::String& name, short, sf::Uint16 mode, sf::Uint8 delay);
 	void addTempRoom(sf::Uint16 mode, Node* game = nullptr, Tournament* _tournament = nullptr);
 	void removeIdleRooms();

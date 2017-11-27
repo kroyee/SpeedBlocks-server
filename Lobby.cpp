@@ -4,14 +4,14 @@
 using std::cout;
 using std::endl;
 
-Lobby::Lobby(Connections* _conn) :
+Lobby::Lobby(Connections& _conn) :
 	conn(_conn), roomCount(0), tournamentCount(0), idcount(0),
 	tourn_idcount(10000), tmp_idcount(20000), daily(nullptr), weekly(nullptr), monthly(nullptr),
-	grandslam(nullptr), challengeHolder(*conn), saveTournamentsTime(sf::seconds(0)), tournamentsUpdated(false) {}
+	grandslam(nullptr), challengeHolder(conn), saveTournamentsTime(sf::seconds(0)), tournamentsUpdated(false) {}
 
 void Lobby::joinRequest() {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	if (id < 10000)
 		joinRoom(id);
 	else if (id < 20000)
@@ -22,22 +22,22 @@ void Lobby::joinRequest() {
 
 void Lobby::joinRoom(sf::Uint16 roomid) {
 	for (auto&& room : rooms)
-		if (room.id == roomid) {
-			if (alreadyInside(room, *conn->sender))
+		if (room->id == roomid) {
+			if (alreadyInside(*room, *conn.sender))
 				return;
-			if (room.gamemode == 2 && conn->sender->stats.rank != 0) {
-				conn->sender->sendSignal(18);
+			if (room->gamemode == 2 && conn.sender->stats.ffaRank != 0) {
+				conn.sender->sendSignal(18);
 				return;
 			}
-			if ((room.currentPlayers < room.maxPlayers || room.maxPlayers == 0) && (conn->sender->sdataInit || conn->sender->guest)) {
-				conn->sender->sendJoinRoomResponse(room, 1);
-				room.sendNewPlayerInfo(*conn->sender);
-				room.join(*conn->sender);
+			if ((room->currentPlayers < room->maxPlayers || room->maxPlayers == 0) && (conn.sender->sdataInit || conn.sender->guest)) {
+				conn.sender->sendJoinRoomResponse(*room, 1);
+				room->sendNewPlayerInfo(*conn.sender);
+				room->join(*conn.sender);
 			}
-			else if (conn->sender->sdataInit || conn->sender->guest)
-				conn->sender->sendJoinRoomResponse(room, 2);
+			else if (conn.sender->sdataInit || conn.sender->guest)
+				conn.sender->sendJoinRoomResponse(*room, 2);
 			else
-				conn->sender->sendJoinRoomResponse(room, 3);
+				conn.sender->sendJoinRoomResponse(*room, 3);
 		}
 }
 
@@ -45,59 +45,59 @@ void Lobby::joinTournament(sf::Uint16 tournamentid) {
 	for (auto&& tournament : tournaments)
 		if (tournamentid == tournament.id) {
 			tournament.sendTournament();
-			tournament.addObserver(*conn->sender);
+			tournament.addObserver(*conn.sender);
 		}
 }
 
 void Lobby::joinTournamentGame() {
 	sf::Uint16 tId, gId;
-	conn->packet >> tId >> gId;
-	for (auto&& tournament : tournaments)
+	conn.packet >> tId >> gId;
+	for (auto& tournament : tournaments)
 		if (tId == tournament.id)
-			for (auto&& game : tournament.bracket.games)
+			for (auto& game : tournament.bracket.games)
 				if (gId == game.id)
 					if (game.status == 2 || game.status == 3) {
-						if (conn->sender->id == game.player1->id || conn->sender->id == game.player2->id) {
+						if (conn.sender->id == game.player1->id || conn.sender->id == game.player2->id) {
 							if (game.room == nullptr)
 								addTempRoom(4, &game, &tournament);
-							if (alreadyInside(*game.room, *conn->sender))
+							if (alreadyInside(*game.room, *conn.sender))
 								return;
-							conn->sender->sendJoinRoomResponse(*game.room, 1);
-							game.room->sendNewPlayerInfo(*conn->sender);
-							game.room->join(*conn->sender);
+							conn.sender->sendJoinRoomResponse(*game.room, 1);
+							game.room->sendNewPlayerInfo(*conn.sender);
+							game.room->join(*conn.sender);
 							game.sendScore();
 							game.resetWaitTimeSent();
 							return;
 						}
-						conn->sender->sendJoinRoomResponse(*game.room, 4);
+						conn.sender->sendJoinRoomResponse(*game.room, 4);
 						return;
 					}
 }
 
 void Lobby::joinAsSpectator() {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	if (id < 10000) {
 		for (auto&& room : rooms)
-			if (room.id == id) {
-				if (room.addSpectator(*conn->sender))
-					conn->sender->sendJoinRoomResponse(room, 1000);
+			if (room->id == id) {
+				if (room->addSpectator(*conn.sender))
+					conn.sender->sendJoinRoomResponse(*room, 1000);
 				return;
 			}
 	}
 	else if (id < 20000) {
 		sf::Uint16 gId;
-		conn->packet >> gId;
-		for (auto&& tournament : tournaments)
+		conn.packet >> gId;
+		for (auto& tournament : tournaments)
 		if (id == tournament.id)
-			for (auto&& game : tournament.bracket.games)
+			for (auto& game : tournament.bracket.games)
 				if (gId == game.id)
 					if (game.status == 2 || game.status == 3) {
 						if (game.room == nullptr)
 							addTempRoom(4, &game, &tournament);
-						if (!game.room->addSpectator(*conn->sender))
+						if (!game.room->addSpectator(*conn.sender))
 							return;
-						conn->sender->sendJoinRoomResponse(*game.room, 1000);
+						conn.sender->sendJoinRoomResponse(*game.room, 1000);
 						game.sendScore();
 						game.resetWaitTimeSent();
 						return;
@@ -106,56 +106,67 @@ void Lobby::joinAsSpectator() {
 }
 
 bool Lobby::alreadyInside(const Room& room, const Client& joiner) {
-	for (auto&& client : room.clients)
+	for (auto& client : room.clients)
 		if (client->id == joiner.id)
 			return true;
 	return false;
 }
 
 void Lobby::sendRoomList(Client& client) {
-	conn->packet.clear();
+	conn.packet.clear();
 	sf::Uint8 packetid = 16;
-	conn->packet << packetid << roomCount;
+	conn.packet << packetid << roomCount;
 	for (auto&& room : rooms) {
-		conn->packet << room.id << room.name << room.currentPlayers << room.maxPlayers;
+		conn.packet << room->id << room->name << room->currentPlayers << room->maxPlayers;
 	}
-	conn->packet << (sf::Uint16)matchmaking1vs1.queue.size() << (sf::Uint16)matchmaking1vs1.playing.size();
-	conn->send(client);
+	conn.packet << (sf::Uint16)matchmaking1vs1.queue.size() << (sf::Uint16)matchmaking1vs1.playing.size();
+	conn.send(client);
+}
+
+void Lobby::makeRoom(sf::Uint16 mode) {
+	if (mode == 1)
+		rooms.emplace_back(new FFARoom(conn));
+	else if (mode == 2)
+		rooms.emplace_back(new HeroRoom(conn));
+	else if (mode == 3)
+		rooms.emplace_back(new CasualRoom(conn));
+	else if (mode == 4)
+		rooms.emplace_back(new TournamentRoom(conn));
+	else if (mode == 5)
+		rooms.emplace_back(new VSRoom(conn));
+	else
+		rooms.emplace_back(new ChallengeRoom(conn, mode));
 }
 
 void Lobby::addRoom(const sf::String& name, short max, sf::Uint16 mode, sf::Uint8 delay) {
-	Room newroom(conn);
-	rooms.push_back(newroom);
-	rooms.back().name = name;
-	rooms.back().id = idcount;
-	rooms.back().maxPlayers = max;
-	rooms.back().currentPlayers = 0;
-	rooms.back().activePlayers = 0;
-	rooms.back().gamemode = mode;
-	rooms.back().timeBetweenRounds = sf::seconds(delay);
-	cout << "Adding room " << rooms.back().name.toAnsiString() << " as " << rooms.back().id << endl;
+	makeRoom(mode);
+	rooms.back()->name = name;
+	rooms.back()->id = idcount;
+	rooms.back()->maxPlayers = max;
+	rooms.back()->currentPlayers = 0;
+	rooms.back()->activePlayers = 0;
+	rooms.back()->timeBetweenRounds = sf::seconds(delay);
+	cout << "Adding room " << rooms.back()->name.toAnsiString() << " as " << rooms.back()->id << endl;
 	idcount++;
 	roomCount++;
 	if (idcount>=10000)
 		idcount=10;
-	if (conn->sender != nullptr)
-		sendRoomList(*conn->sender);
+	if (conn.sender != nullptr)
+		sendRoomList(*conn.sender);
 }
 
 void Lobby::addTempRoom(sf::Uint16 mode, Node* game, Tournament* _tournament) {
-	Room newroom(conn);
-	tmp_rooms.push_back(newroom);
-	tmp_rooms.back().id = tmp_idcount;
-	tmp_rooms.back().maxPlayers = 2;
-	tmp_rooms.back().currentPlayers = 0;
-	tmp_rooms.back().activePlayers = 0;
-	tmp_rooms.back().gamemode = mode;
-	tmp_rooms.back().timeBetweenRounds = sf::seconds(0);
-	tmp_rooms.back().tournamentGame = game;
-	tmp_rooms.back().tournament = _tournament;
+	makeRoom(mode);
+	tmp_rooms.back()->id = tmp_idcount;
+	tmp_rooms.back()->maxPlayers = 2;
+	tmp_rooms.back()->currentPlayers = 0;
+	tmp_rooms.back()->activePlayers = 0;
+	tmp_rooms.back()->timeBetweenRounds = sf::seconds(0);
+	tmp_rooms.back()->tournamentGame = game;
+	tmp_rooms.back()->tournament = _tournament;
 	if (game != nullptr)
-		game->room = &tmp_rooms.back();
-	cout << "Adding tmp room as " << tmp_rooms.back().id << endl;
+		game->room = tmp_rooms.back().get();
+	cout << "Adding tmp room as " << tmp_rooms.back()->id << endl;
 	tmp_idcount++;
 	if (tmp_idcount>=30000)
 		tmp_idcount=20000;
@@ -163,16 +174,16 @@ void Lobby::addTempRoom(sf::Uint16 mode, Node* game, Tournament* _tournament) {
 
 void Lobby::removeIdleRooms() {
 	for (auto it = rooms.begin(); it != rooms.end(); it++)
-		if (it->currentPlayers == 0 && it->start.getElapsedTime() > sf::seconds(60) && it->id > 9 && !it->spectators.size()) {
-			cout << "Removing room " << it->name.toAnsiString() << " as " << it->id << endl;
+		if ((*it)->currentPlayers == 0 && (*it)->start.getElapsedTime() > sf::seconds(60) && (*it)->id > 9 && !(*it)->spectators.size()) {
+			cout << "Removing room " << (*it)->name.toAnsiString() << " as " << (*it)->id << endl;
 			it = rooms.erase(it);
 			roomCount--;
 		}
 	for (auto it = tmp_rooms.begin(); it != tmp_rooms.end(); it++)
-		if (it->currentPlayers == 0 && !it->spectators.size()) {
-			cout << "Removing tmp room " << it->id << endl;
-			if (it->tournamentGame != nullptr)
-				it->tournamentGame->room = nullptr;
+		if ((*it)->currentPlayers == 0 && !(*it)->spectators.size()) {
+			cout << "Removing tmp room " << (*it)->id << endl;
+			if ((*it)->tournamentGame != nullptr)
+				(*it)->tournamentGame->room = nullptr;
 			it = tmp_rooms.erase(it);
 		}
 }
@@ -182,17 +193,17 @@ void Lobby::setMsg(const sf::String& msg) {
 }
 
 void Lobby::sendTournamentList(Client& client) {
-	conn->packet.clear();
+	conn.packet.clear();
 	sf::Uint8 packetid = 22;
-	conn->packet << packetid << tournamentCount;
+	conn.packet << packetid << tournamentCount;
 	for (auto&& tournament : tournaments) {
-		conn->packet << tournament.id << tournament.name << tournament.status << tournament.players;
+		conn.packet << tournament.id << tournament.name << tournament.status << tournament.players;
 	}
-	conn->send(client);
+	conn.send(client);
 }
 
 void Lobby::addTournament(const sf::String& name, sf::Uint16 _mod_id) {
-	Tournament newTournament(*conn);
+	Tournament newTournament(conn);
 	newTournament.rounds = 11;
 	newTournament.sets = 1;
 	newTournament.status = 0;
@@ -221,7 +232,7 @@ void Lobby::signUpForTournament(Client& client) {
 		return;
 	}
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id) {
 			for (auto&& player : tournament.participants)
@@ -237,7 +248,7 @@ void Lobby::signUpForTournament(Client& client) {
 
 void Lobby::withdrawFromTournament(Client& client) {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id) {
 			if (tournament.removePlayer(client.id))
@@ -248,14 +259,14 @@ void Lobby::withdrawFromTournament(Client& client) {
 
 void Lobby::closeSignUp() {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id) {
 			for (auto&& mod : tournament.moderator_list)
-				if (mod == conn->sender->id)
+				if (mod == conn.sender->id)
 					if (tournament.status == 0) {
 						if (tournament.players < 3) {
-							conn->sender->sendSignal(0);
+							conn.sender->sendSignal(0);
 							return;
 						}
 						tournament.makeBracket();
@@ -269,13 +280,13 @@ void Lobby::closeSignUp() {
 
 void Lobby::startTournament() {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id) {
 			for (auto&& mod : tournament.moderator_list)
-				if (mod == conn->sender->id) {
+				if (mod == conn.sender->id) {
 					if (tournament.players < 2) {
-						conn->sender->sendSignal(0);
+						conn.sender->sendSignal(0);
 						return;
 					}
 					else
@@ -287,22 +298,22 @@ void Lobby::startTournament() {
 
 void Lobby::removeTournamentObserver() {
 	sf::Uint16 id;
-	conn->packet >> id;
+	conn.packet >> id;
 	for (auto&& tournament : tournaments)
 		if (tournament.id == id)
-			tournament.removeObserver(*conn->sender);
+			tournament.removeObserver(*conn.sender);
 }
 
 void Lobby::createTournament() {
-	if (conn->sender->guest) {
-		conn->sender->sendSignal(2);
+	if (conn.sender->guest) {
+		conn.sender->sendSignal(2);
 		return;
 	}
-	Tournament newTournament(*conn);
-	conn->packet >> newTournament.name >> newTournament.sets >> newTournament.rounds;
+	Tournament newTournament(conn);
+	conn.packet >> newTournament.name >> newTournament.sets >> newTournament.rounds;
 	newTournament.status = 0;
 	newTournament.id = tourn_idcount;
-	newTournament.moderator_list.push_back(conn->sender->id);
+	newTournament.moderator_list.push_back(conn.sender->id);
 	newTournament.grade = 5;
 	tourn_idcount++;
 	if (tourn_idcount >= 20000)
@@ -447,7 +458,7 @@ void Lobby::regularTournaments() {
 }
 
 void Lobby::saveTournaments() {
-	if (conn->serverClock.getElapsedTime() - saveTournamentsTime < sf::seconds(60) || !tournamentsUpdated)
+	if (conn.serverClock.getElapsedTime() - saveTournamentsTime < sf::seconds(60) || !tournamentsUpdated)
 		return;
 
 	system("rm Tournaments/*");
@@ -486,7 +497,7 @@ void Lobby::saveTournaments() {
 
 	file.close();
 
-	saveTournamentsTime = conn->serverClock.getElapsedTime();
+	saveTournamentsTime = conn.serverClock.getElapsedTime();
 	tournamentsUpdated=false;
 }
 
@@ -555,41 +566,41 @@ void Lobby::loadTournaments() {
 }
 
 void Lobby::playChallenge() {
-	if (conn->sender->room != nullptr)
+	if (conn.sender->room != nullptr)
 		return;
 
-	if (conn->sender->guest) {
-		conn->sender->sendSignal(2);
+	if (conn.sender->guest) {
+		conn.sender->sendSignal(2);
 		return;
 	}
 
 	sf::Uint16 challengeId;
-	conn->packet >> challengeId;
+	conn.packet >> challengeId;
 	if (std::none_of(challengeHolder.challenges.begin(), challengeHolder.challenges.end(), [&](std::unique_ptr<Challenge> &chall){
 		return chall->id == challengeId;
 	})) return;
 
 	addTempRoom(challengeId);
 
-	conn->sender->sendJoinRoomResponse(tmp_rooms.back(), tmp_rooms.back().gamemode);
-	tmp_rooms.back().join(*conn->sender);
+	conn.sender->sendJoinRoomResponse(*tmp_rooms.back(), tmp_rooms.back()->gamemode);
+	tmp_rooms.back()->join(*conn.sender);
 }
 
 void Lobby::getReplay() {
 	sf::Uint16 type;
-	conn->packet >> type;
+	conn.packet >> type;
 	if (type >= 20000)
-		challengeHolder.updateResult(*conn->sender, type);
+		challengeHolder.updateResult(*conn.sender, type);
 }
 
 void Lobby::pairMatchmaking() {
 	addTempRoom(5);
-	matchmaking1vs1.player1->sendJoinRoomResponse(tmp_rooms.back(), 1);
-	tmp_rooms.back().join(*matchmaking1vs1.player1);
+	matchmaking1vs1.player1->sendJoinRoomResponse(*tmp_rooms.back(), 1);
+	tmp_rooms.back()->join(*matchmaking1vs1.player1);
 
-	matchmaking1vs1.player2->sendJoinRoomResponse(tmp_rooms.back(), 1);
-	tmp_rooms.back().sendNewPlayerInfo(*matchmaking1vs1.player2);
-	tmp_rooms.back().join(*matchmaking1vs1.player2);
+	matchmaking1vs1.player2->sendJoinRoomResponse(*tmp_rooms.back(), 1);
+	tmp_rooms.back()->sendNewPlayerInfo(*matchmaking1vs1.player2);
+	tmp_rooms.back()->join(*matchmaking1vs1.player2);
 
 	matchmaking1vs1.setPlaying();
 }

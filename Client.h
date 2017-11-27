@@ -12,14 +12,31 @@
 class Room;
 class Connections;
 class Tournament;
+class JSONWrap;
 
 class StatsHolder {
 public:
-	sf::Uint8 maxCombo, maxBpm, rank, alert;
-	sf::Int16 points;
-	sf::Uint16 heropoints, herorank, vspoints, vsrank, gradeA, gradeB, gradeC, gradeD;
-	float avgBpm;
-	sf::Uint32 gamesPlayed, gamesWon, totalGames, totalBpm, tournamentsplayed, tournamentswon, challenges_played;
+	// General
+	sf::Uint8 maxCombo=0, maxBpm=0, alert=1;
+	float avgBpm=0;
+	sf::Uint32 totalPlayed=0, totalWon=0, totalBpm=0, challenges_played=0;
+
+	// 1v1
+	sf::Uint16 vsPoints=1500, vsRank=0;
+	sf::Uint32 vsPlayed=0, vsWon=0;
+
+	// FFA
+	sf::Int16 ffaPoints=0;
+	sf::Uint8 ffaRank=25;
+	sf::Uint32 ffaPlayed=0, ffaWon=0;
+
+	// Hero
+	sf::Uint16 heroPoints=1500, heroRank=0;
+	sf::Uint32 heroPlayed=0, heroWon=0;
+
+	// Tournament
+	sf::Uint16 gradeA=0, gradeB=0, gradeC=0, gradeD=0;
+	sf::Uint32 tournamentsPlayed=0, tournamentsWon=0;
 };
 
 class Client {
@@ -60,6 +77,7 @@ public:
 	Tournament* tournament;
 
 	void sendData();
+	bool sendDataPart(JSONWrap& jwrap);
 	void getData();
 	int getDataInt(short, short, std::string&);
 	float getDataFloat(short, short, std::string&);

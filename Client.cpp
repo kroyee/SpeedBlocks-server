@@ -45,25 +45,49 @@ void Client::authUser() {
 
 void Client::sendData() {
     JSONWrap jwrap;
-    jwrap.addPair("key", conn->serverkey);
-    jwrap.addClientStats(*this);
-    sf::Http::Response response = jwrap.sendPost("put_stats.php");
+
+    jwrap.add1v1Stats(*this);
+    if (!sendDataPart(jwrap))
+    	return;
+
+    jwrap.addFFAStats(*this);
+    if (!sendDataPart(jwrap))
+    	return;
+
+    jwrap.addHeroStats(*this);
+    if (!sendDataPart(jwrap))
+    	return;
+
+    jwrap.addGeneralStats(*this);
+    if (!sendDataPart(jwrap))
+    	return;
+
+	sdataSet=true;
+}
+
+bool Client::sendDataPart(JSONWrap& jwrap) {
+	sf::Http::Response response = jwrap.sendPost("put_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
     		if (response.getBody() != "New records created successfully")
         		std::cout << "Client " << (int)id << ": " << response.getBody() << std::endl;
-        	sdataSet=true;
+        	return true;
     }
     else {
         std::cout << "sendData failed request" << std::endl;
         sdataPutFailed=true;
+        return false;
     }
 }
 
 void Client::getData() {
     JSONWrap jwrap;
     jwrap.addPair("id", id);
-    jwrap.addPair("all", 1);
+    jwrap.addPair("1v1", 1);
+    jwrap.addPair("ffa", 1);
+    jwrap.addPair("hero", 1);
+    jwrap.addPair("tstats", 1);
+    jwrap.addPair("gstats", 1);
     sf::Http::Response response = jwrap.sendPost("/get_stats.php");
 
     if (response.getStatus() == sf::Http::Response::Ok) {
@@ -199,8 +223,7 @@ void Client::getWinnerData() {
 	}
 	room->sendRoundScores();
 	room->updatePlayerScore();
-	if (room->gamemode < 6 && room->gamemode != 3)
-		stats.gamesWon++;
+	room->incrementGamesWon(*this);
 	if (bpm > stats.maxBpm && room->roundLenght > sf::seconds(10))
 		stats.maxBpm = bpm;
 }

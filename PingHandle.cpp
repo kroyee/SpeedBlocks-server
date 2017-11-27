@@ -32,6 +32,8 @@ int PingHandle::getAverage() {
 			count++;
 			totalPing+=packet.ping;
 		}
+	if (!count)
+		return 0;
 	return totalPing/count;
 }
 
@@ -54,6 +56,8 @@ float PingHandle::getPacketLoss(const sf::Time& t) {
 			}
 		}
 	}
+	if (!total)
+		return 0;
 	return (float)dropped/(float)total;
 }
 
