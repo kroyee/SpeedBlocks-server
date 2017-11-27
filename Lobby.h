@@ -37,7 +37,6 @@ public:
 	void joinAsSpectator();
 	bool alreadyInside(const Room&, const Client&);
 
-	void makeRoom(sf::Uint16 mode);
 	void addRoom(const sf::String& name, short, sf::Uint16 mode, sf::Uint8 delay);
 	void addTempRoom(sf::Uint16 mode, Node* game = nullptr, Tournament* _tournament = nullptr);
 	void removeIdleRooms();

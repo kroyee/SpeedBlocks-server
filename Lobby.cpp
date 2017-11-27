@@ -123,7 +123,7 @@ void Lobby::sendRoomList(Client& client) {
 	conn.send(client);
 }
 
-void Lobby::makeRoom(sf::Uint16 mode) {
+void Lobby::addRoom(const sf::String& name, short max, sf::Uint16 mode, sf::Uint8 delay) {
 	if (mode == 1)
 		rooms.emplace_back(new FFARoom(conn));
 	else if (mode == 2)
@@ -136,10 +136,6 @@ void Lobby::makeRoom(sf::Uint16 mode) {
 		rooms.emplace_back(new VSRoom(conn));
 	else
 		rooms.emplace_back(new ChallengeRoom(conn, mode));
-}
-
-void Lobby::addRoom(const sf::String& name, short max, sf::Uint16 mode, sf::Uint8 delay) {
-	makeRoom(mode);
 	rooms.back()->name = name;
 	rooms.back()->id = idcount;
 	rooms.back()->maxPlayers = max;
@@ -156,7 +152,18 @@ void Lobby::addRoom(const sf::String& name, short max, sf::Uint16 mode, sf::Uint
 }
 
 void Lobby::addTempRoom(sf::Uint16 mode, Node* game, Tournament* _tournament) {
-	makeRoom(mode);
+	if (mode == 1)
+		tmp_rooms.emplace_back(new FFARoom(conn));
+	else if (mode == 2)
+		tmp_rooms.emplace_back(new HeroRoom(conn));
+	else if (mode == 3)
+		tmp_rooms.emplace_back(new CasualRoom(conn));
+	else if (mode == 4)
+		tmp_rooms.emplace_back(new TournamentRoom(conn));
+	else if (mode == 5)
+		tmp_rooms.emplace_back(new VSRoom(conn));
+	else
+		tmp_rooms.emplace_back(new ChallengeRoom(conn, mode));
 	tmp_rooms.back()->id = tmp_idcount;
 	tmp_rooms.back()->maxPlayers = 2;
 	tmp_rooms.back()->currentPlayers = 0;
