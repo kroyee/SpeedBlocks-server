@@ -26,6 +26,7 @@ void JSONWrap::addPair(const sf::String& key, sf::Uint32 value) {
 void JSONWrap::add1v1Stats(Client& client) {
 	clear();
 	addPair("key", client.conn->serverkey);
+	addPair("user_id", client.id);
 	addPair("table_name", "1v1");
 	addPair("points", client.stats.vsPoints);
 	addPair("rank", client.stats.vsRank);
@@ -36,6 +37,7 @@ void JSONWrap::add1v1Stats(Client& client) {
 void JSONWrap::addFFAStats(Client& client) {
 	clear();
 	addPair("key", client.conn->serverkey);
+	addPair("user_id", client.id);
 	addPair("table_name", "ffa");
 	addPair("points", client.stats.ffaPoints);
 	addPair("rank", client.stats.ffaRank);
@@ -46,6 +48,7 @@ void JSONWrap::addFFAStats(Client& client) {
 void JSONWrap::addHeroStats(Client& client) {
 	clear();
 	addPair("key", client.conn->serverkey);
+	addPair("user_id", client.id);
 	addPair("table_name", "hero");
 	addPair("points", client.stats.heroPoints);
 	addPair("rank", client.stats.heroRank);
@@ -56,6 +59,7 @@ void JSONWrap::addHeroStats(Client& client) {
 void JSONWrap::addTournamentStats(Client& client) {
 	clear();
 	addPair("key", client.conn->serverkey);
+	addPair("user_id", client.id);
 	addPair("table_name", "tstats");
 	addPair("gradeA", client.stats.gradeA);
 	addPair("gradeB", client.stats.gradeB);
@@ -68,6 +72,7 @@ void JSONWrap::addTournamentStats(Client& client) {
 void JSONWrap::addGeneralStats(Client& client) {
 	clear();
 	addPair("key", client.conn->serverkey);
+	addPair("user_id", client.id);
 	addPair("table_name", "gstats");
 	addPair("maxcombo", client.stats.maxCombo);
 	addPair("maxbpm", client.stats.maxBpm);
