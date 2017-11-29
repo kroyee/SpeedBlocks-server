@@ -1,0 +1,30 @@
+{
+    "111":{
+        "mac":{
+            "mac/SpeedBlocks":"795f4a276d608dc89ee3f72f546f14b5"
+        },
+        "all":{
+            "changelog":"Added a 60 FPS/IPS limit to the game when it's does not have focus to limit CPU usage.\n\nAdded new survivor challenge!\n\nFixes position of challenge leaderboard so the scrollbar no longer ends up behind the menu.\n\nSome major internal updates, for more details see the commits on the GitHub page.\n"
+        },
+        "linux":{
+            "linux/SpeedBlocks":"0a2451cd2f66aa8dd16b661b0bb5e570"
+        },
+        "win":{
+            "win/SpeedBlocks.exe":"2f3a76660bea5a83e06805e53f0a3b26"
+        }
+    },
+    "112":{
+        "mac":{
+            "mac/SpeedBlocks":"d4e0db91bc6ec3a779fd73891a410b52"
+        },
+        "all":{
+            "changelog":"New challenge, Cheese 30L added\n\nGarbage lines will now be added gradually to the playfield\n\n[Bug Fixes]\nSoftdrop bug in survivor\nGame crash after reconnect when authentication failed\nTime display in challenges showing 60:xx instead of 1:00:xx\n"
+        },
+        "linux":{
+            "linux/SpeedBlocks":"0eeff780be9684fac2ae9b9605ff64fd"
+        },
+        "win":{
+            "win/SpeedBlocks.exe":"2e9f0ef9d5674210ddfbc1b659645531"
+        }
+    }
+}

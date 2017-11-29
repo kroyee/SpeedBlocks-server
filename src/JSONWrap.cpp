@@ -111,6 +111,7 @@ void mapStringToVariable(StatsHolder& stats, std::string key, sf::Uint32 value) 
 	else MAP_VARIABLE(gstatsplayed, totalPlayed);
 	else MAP_VARIABLE(gstatstotalbpm, totalBpm);
 	else MAP_VARIABLE(gstatsalert, alert);
+	else MAP_VARIABLE(gstatschallenges_played, challenges_played);
 
 	// 1v1
 	else MAP_VARIABLE(1v1rank, vsRank);

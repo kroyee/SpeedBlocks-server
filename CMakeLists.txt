@@ -16,10 +16,10 @@ endif()
 add_definitions(-DSFML_NO_DEPRECATED_WARNINGS)
 
 set(EXECUTABLE_NAME SpeedBlocks-server)
-file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/*.cpp ${CMAKE_SOURCE_DIR}/*.h)
+file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.h)
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
 
-target_include_directories(SpeedBlocks-server PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(SpeedBlocks-server PUBLIC ${CMAKE_SOURCE_DIR}/src)
 
 add_custom_target(run
     COMMAND lxterminal -e ./${EXECUTABLE_NAME}

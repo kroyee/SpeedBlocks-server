@@ -5,6 +5,7 @@
 #include <string>
 using std::cout;
 using std::endl;
+using std::to_string;
 
 sf::String durationToString(sf::Uint32 duration) {
 	sf::Uint8 minutes=0, seconds=0, parts=0;

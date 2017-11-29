@@ -1,7 +1,6 @@
 #include "Connections.h"
 #include <string>
 #include <fstream>
-#include "MingwConvert.h"
 #include "Tournament.h"
 using std::cout;
 using std::endl;

@@ -1,0 +1,32 @@
+#!/bin/bash
+cd /home/super
+if [ "$1" = "on" ]
+then
+	if [ -e .crashrestartoff ]
+	then
+		rm .crashrestartoff
+	fi
+	echo Crashrestart turned on
+	exit 0
+elif [ "$1" = "off" ]
+then
+	echo 1 > .crashrestartoff
+	echo Crashrestart turned off
+	exit 0
+elif [ -e .crashrestartoff ]
+then
+	exit 0
+fi
+OUTPUT="$(ps -A | grep SpeedBlocks)"
+if [ -z "$OUTPUT" ]
+then
+	tmux capture-pane -S -100
+	COUNT=1
+	while [ -e crashlog$COUNT ]
+	do
+		COUNT=$((COUNT+1))
+	done
+	tmux save-buffer crashlog$COUNT
+	tmux delete-buffer
+	tmux send-keys ./SpeedBlocks-server C-m
+fi

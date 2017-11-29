@@ -5,7 +5,6 @@
 #include <thread>
 #include <list>
 #include <iostream>
-#include "MingwConvert.h"
 #include "ClientHistory.h"
 #include "PingHandle.h"
 

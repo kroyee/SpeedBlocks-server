@@ -613,7 +613,7 @@ void Tournament::checkIfStart() {
 				if (time(NULL) > startingTime-1200) {
 					notify=true;
 					JSONWrap jwrap;
-					sf::String cont = "<@&340947653447647243> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
+					sf::String cont = "<@&384788484390518784> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
 					for (auto& player : participants)
 						cont += player.name + " ";
 					jwrap.addPair("content", cont);
@@ -672,7 +672,7 @@ void Tournament::scoreTournament() {
 	jwrap.addPair("grade", grade);
 	for (auto participant : participants)
 		if (participant.played)
-			jwrap.addPair(to_string(participant.id), participant.position);
+			jwrap.addPair(std::to_string(participant.id), participant.position);
 
 	sf::Http::Response response = jwrap.sendPost("/report_tournament.php");
 	if (response.getStatus() == sf::Http::Response::Ok) {
