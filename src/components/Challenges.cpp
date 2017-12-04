@@ -73,9 +73,6 @@ void ChallengeHolder::loadChallenges() {
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Survivor));
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Cheese30L));
 
-	for (auto& challenge : challenges)
-		challenge->sendScores(conn.serverkey);
-
 	challengeCount = challenges.size();
 
 	updateTime = conn.serverClock.getElapsedTime() + sf::seconds(60);
