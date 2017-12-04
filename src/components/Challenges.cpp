@@ -73,6 +73,9 @@ void ChallengeHolder::loadChallenges() {
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Survivor));
 	challenges.push_back(std::unique_ptr<Challenge>(new CH_Cheese30L));
 
+	for (auto& challenge : challenges)
+		challenge->sendScores(conn.serverkey);
+
 	challengeCount = challenges.size();
 
 	updateTime = conn.serverClock.getElapsedTime() + sf::seconds(60);
@@ -251,7 +254,7 @@ void Challenge::sendScores(sf::String serverkey) {
 		jwrap.addPair("time", score.duration);
 		int i=0;
 		for (auto& column : columns) {
-			if (column.text == "Name" || column.text == "Time");
+			if (column.text == "Name" || column.text == "Time")
 				continue;
 			jwrap.addPair(column.text, score.column[i++]);
 		}
@@ -278,7 +281,6 @@ CH_Race::CH_Race() {
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
 	loadScores();
-	sendScores();
 }
 
 void CH_Race::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -305,7 +307,6 @@ CH_Cheese::CH_Cheese() {
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
 	loadScores();
-	sendScores();
 }
 
 void CH_Cheese::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -332,7 +333,6 @@ CH_Survivor::CH_Survivor() {
 	columns.push_back(Column(200, "Cleared"));
 	columns.push_back(Column(270, "Time"));
 	loadScores();
-	sendScores();
 }
 
 void CH_Survivor::setColumns(Client& client, uint16_t, Score& score) {
@@ -363,7 +363,6 @@ CH_Cheese30L::CH_Cheese30L() {
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
 	loadScores();
-	sendScores();
 }
 
 void CH_Cheese30L::setColumns(Client&, uint16_t blocks, Score& score) {
