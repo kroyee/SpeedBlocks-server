@@ -245,7 +245,9 @@ void Challenge::loadScores() {
 void Challenge::sendScores(sf::String serverkey) {
 	for (auto & score : scores) {
 		JSONWrap jwrap;
-		jwrap.addPair("challenge_name", name);
+		sf::String fixedname = name;
+		fixedname.replace(" ", "_");
+		jwrap.addPair("challenge_name", fixedname);
 		jwrap.addPair("id", score.id);
 		jwrap.addPair("key", serverkey);
 		jwrap.addPair("time", score.duration);
