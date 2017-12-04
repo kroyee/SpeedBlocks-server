@@ -22,6 +22,7 @@ void getInput() {
 
 int main() {
 	srand(time(NULL));
+	StatsHolder::mapStringsToVariables();
 
 	Connections conn;
 	conn.lobby.loadTournaments();
@@ -47,9 +48,7 @@ int main() {
 	conn.lobby.setMsg("Press Enter at any time to activate the chat. Press Enter again to send a message or Esc to deactivate it. Press TAB while the chat is active to change where the message will go to, Room, Lobby or latest priv (shown next to chatbox). Use /w nickname to send private msg.\n\nYou can find some new visual options under the Visual tab. Including disabling that the menu reacts to the mouse.\nAPM in the score screen shows sent+blocked per minute.\n\nEnjoy! :-)");
 
 	while (!quit) {
-		if (conn.listen())
-			if (conn.receive())
-				conn.handlePacket();
+		conn.listen();
 
 		conn.manageRooms();
 		conn.manageClients();

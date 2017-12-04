@@ -16,10 +16,10 @@ endif()
 add_definitions(-DSFML_NO_DEPRECATED_WARNINGS)
 
 set(EXECUTABLE_NAME SpeedBlocks-server)
-file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.h)
+file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.h ${CMAKE_SOURCE_DIR}/src/core/*.cpp ${CMAKE_SOURCE_DIR}/src/core/*.h ${CMAKE_SOURCE_DIR}/src/AI/*.cpp ${CMAKE_SOURCE_DIR}/src/AI/*.h ${CMAKE_SOURCE_DIR}/src/utility/*.cpp ${CMAKE_SOURCE_DIR}/src/utility/*.h ${CMAKE_SOURCE_DIR}/src/components/*.cpp ${CMAKE_SOURCE_DIR}/src/components/*.h ${CMAKE_SOURCE_DIR}/src/rooms/*.cpp ${CMAKE_SOURCE_DIR}/src/rooms/*.h )
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
 
-target_include_directories(SpeedBlocks-server PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(SpeedBlocks-server PUBLIC ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/core ${CMAKE_SOURCE_DIR}/src/components ${CMAKE_SOURCE_DIR}/src/rooms ${CMAKE_SOURCE_DIR}/src/utility ${CMAKE_SOURCE_DIR}/src/AI)
 
 add_custom_target(run
     COMMAND lxterminal -e ./${EXECUTABLE_NAME}
