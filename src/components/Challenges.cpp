@@ -47,7 +47,8 @@ void ChallengeHolder::saveChallenges() {
 		if (!chall->update)
 			continue;
 		cout << "Saving challenge " << chall->name.toAnsiString() << endl;
-		std::ofstream file("Challenges/" + chall->name);
+		chall->sendScores(conn.serverkey);
+		/*std::ofstream file("Challenges/" + chall->name);
 		if (!file.is_open()) {
 			cout << "Failed to save challenge " << chall->name.toAnsiString() << endl;
 			continue;
@@ -63,7 +64,7 @@ void ChallengeHolder::saveChallenges() {
 			score.update=false;
 		}
 		chall->update=false;
-		file.close();
+		file.close();*/
 	}
 }
 
@@ -217,44 +218,7 @@ void Challenge::addScore(Client& client, uint32_t duration, uint16_t blocks) {
 	scoreCount++;
 }
 
-void Challenge::loadScores(nlohmann::json json) {
-	/*std::ifstream file("Challenges/" + name);
-
-	if (!file.is_open()) {
-		cout << "Failed to load scores for " << name.toAnsiString() << endl;
-		return;
-	}
-
-	cout << "Loading scores for " << name.toAnsiString() << endl;
-
-	Score score;
-	std::string line;
-	scoreCount=0;
-
-	while (getline(file, line)) {
-		if (line == "")
-			continue;
-		score.id = stoi(line);
-		getline(file, line);
-		score.name = line;
-		getline(file, line);
-		score.duration = stoi(line);
-		int size = columns.size()-1;
-		score.column.resize(size);
-		for (int i=0; i<size; i++) {
-			getline(file, line);
-			score.column[i] = line;
-		}
-		score.update=false;
-		if (score.replay.load("Challenges/" + name + "." + score.name))
-			score.replay.id = score.id;
-		else
-			score.replay.id = 0;
-		scores.push_back(score);
-		scoreCount++;
-	}
-	file.close();*/
-
+void Challenge::loadScores(nlohmann::json& json) {
 	for (auto it = json[name].begin(); it != json[name].end(); ++it) {
 		Score score;
 		score.id = stoi(it.key());
@@ -263,9 +227,20 @@ void Challenge::loadScores(nlohmann::json json) {
 		for (auto it2 = it.value().begin(); it2 != it.value().end(); ++it2) {
 			if (it2.key() == "name")
 				score.name = it2.value().get<std::string>();
+			else if (it2.key() == "time")
+				score.duration = it2.value();
 			else
-				score.column[column_count++] = it2.value().get<std::string>();
+				score.column[column_count++] = std::to_string(it2.value().get<unsigned int>());
 		}
+		score.column.back() = durationToString(score.duration);
+
+		if (score.replay.load("Challenges/" + name + "." + score.name))
+			score.replay.id = score.id;
+		else
+			score.replay.id = 0;
+
+		scores.push_back(score);
+		scoreCount++;
 	}
 
 	scores.sort([&](Score& s1, Score& s2){ return sort(s1, s2); });
@@ -273,6 +248,8 @@ void Challenge::loadScores(nlohmann::json json) {
 
 void Challenge::sendScores(sf::String serverkey) {
 	for (auto & score : scores) {
+		if (!score.update)
+			continue;
 		JSONWrap jwrap;
 		sf::String fixedname = name;
 		fixedname.replace(" ", "_");
@@ -308,7 +285,6 @@ CH_Race::CH_Race() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	//loadScores();
 }
 
 void CH_Race::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -334,7 +310,6 @@ CH_Cheese::CH_Cheese() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	//loadScores();
 }
 
 void CH_Cheese::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -360,7 +335,6 @@ CH_Survivor::CH_Survivor() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Cleared"));
 	columns.push_back(Column(270, "Time"));
-	//loadScores();
 }
 
 void CH_Survivor::setColumns(Client& client, uint16_t, Score& score) {
@@ -390,7 +364,6 @@ CH_Cheese30L::CH_Cheese30L() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	//loadScores();
 }
 
 void CH_Cheese30L::setColumns(Client&, uint16_t blocks, Score& score) {

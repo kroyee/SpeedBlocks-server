@@ -26,7 +26,7 @@ struct Score {
 
 	Replay replay;
 
-	bool update;
+	bool update=false;
 };
 
 class Challenge {
@@ -45,7 +45,7 @@ public:
 	virtual void setColumns(Client&, uint16_t blocks, Score& score) = 0;
 	virtual bool sort(Score&, Score&);
 	virtual bool checkResult(Client& client, uint32_t duration, uint16_t blocks, Score& score) = 0;
-	void loadScores(nlohmann::json json);
+	void loadScores(nlohmann::json& json);
 	void sendScores(sf::String serverkey);
 };
 
