@@ -3,6 +3,7 @@
 #include <fstream>
 #include "Tournament.h"
 #include "GameSignals.h"
+#include "JSONWrap.h"
 using std::cout;
 using std::endl;
 
@@ -405,6 +406,8 @@ void Connections::manageRooms() {
 }
 
 void Connections::manageClients() {
+	static sf::Time users_online_update = sf::seconds(0);
+	JSONWrap jwrap;
 	for (auto it = clients.begin(); it != clients.end();  it++) {
 		if (serverClock.getElapsedTime() - it->lastHeardFrom > sf::seconds(10)) {
 			disconnectClient(*it);
@@ -418,6 +421,20 @@ void Connections::manageClients() {
 		it->checkIfStatsSet();
 		it->checkIfAuth();
 		it->sendLines();
+
+		if (it->room)
+			jwrap.addPair(std::to_string(it->id), it->room->gamemode);
+		else
+			jwrap.addPair(std::to_string(it->id), 0);
+	}
+
+	if (serverClock.getElapsedTime() > users_online_update) {
+		users_online_update = serverClock.getElapsedTime();
+		jwrap.addPair("key", serverkey);
+		sf::Http::Response response = jwrap.sendPost("/set_usersonline.php");
+
+	    if (response.getStatus() != sf::Http::Response::Ok)
+	        std::cout << "set_usersonline failed: " << response.getBody() << std::endl;
 	}
 
 	manageUploadData();

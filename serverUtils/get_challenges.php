@@ -35,12 +35,13 @@ function getChallengeScores($table_name) {
 	$fixed[$table_name] = array();
 
 	while ($row = $result->fetch_assoc()) {
+		$field_count = 0;
 		$user_id = $row['user_id'];
 		$fixed[$table_name][$user_id] = array();
 		foreach ($row as $key => $value) {
 	        if ($value == NULL || $key == "user_id")
 	            continue;
-	        $info = $result->fetch_field();
+	        $info = $result->fetch_field_direct($field_count++);
 	        if (in_array($info->type, array(
 	        MYSQLI_TYPE_TINY, MYSQLI_TYPE_SHORT, MYSQLI_TYPE_INT24,
 	        MYSQLI_TYPE_LONG, MYSQLI_TYPE_LONGLONG,
