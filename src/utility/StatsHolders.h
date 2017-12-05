@@ -28,27 +28,27 @@ struct StatsHolder {
 	uint16_t gradeA=0, gradeB=0, gradeC=0, gradeD=0;
 	uint32_t tournamentsPlayed=0, tournamentsWon=0;
 
-	void set(const std::string& name, uint32_t value) {
+	void set(const std::string& name, int64_t value) {
 		setMap[name](this, value);
 	}
-	std::vector<std::pair<std::string, uint32_t>> get(const std::string& name) {
-		std::vector<std::pair<std::string, uint32_t>> retVec;
+	std::vector<std::pair<std::string, int64_t>> get(const std::string& name) {
+		std::vector<std::pair<std::string, int64_t>> retVec;
 		for (auto& pair : getMap[name])
 			retVec.emplace_back(pair.first, pair.second(this));
 		return retVec;
 	}
 
-	static std::unordered_map<std::string, std::function<void(StatsHolder*, uint32_t)>> setMap;
+	static std::unordered_map<std::string, std::function<void(StatsHolder*, int64_t)>> setMap;
 
-	using variable_holder = std::vector<std::pair<std::string, std::function<uint32_t(StatsHolder*)>>>;
+	using variable_holder = std::vector<std::pair<std::string, std::function<int64_t(StatsHolder*)>>>;
 	static std::unordered_map<std::string, variable_holder> getMap;
 
 	template<typename MP>
 	static void bind(const std::string& table_name, const std::string& variable_name, MP ptr) {
-		setMap.emplace(table_name + variable_name, [ptr](StatsHolder* stats, uint32_t value){ stats->*(ptr) = value; });
+		setMap.emplace(table_name + variable_name, [ptr](StatsHolder* stats, int64_t value){ stats->*(ptr) = value; });
 		if (getMap.find(table_name) == getMap.end())
 			getMap.emplace(table_name, variable_holder{});
-		getMap[table_name].emplace_back(variable_name, [ptr](StatsHolder* stats) -> uint32_t { return stats->*(ptr); });
+		getMap[table_name].emplace_back(variable_name, [ptr](StatsHolder* stats) -> int64_t { return stats->*(ptr); });
 	}
 
 	static void mapStringsToVariables();

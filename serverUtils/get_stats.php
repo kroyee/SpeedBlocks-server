@@ -40,7 +40,7 @@ function getTable($table_name) {
     $row = $result->fetch_assoc();
 
     foreach ($row as $key => $value) {
-        if ($value == NULL)
+        if ($value == NULL || $key == "user_id")
             continue;
         $info = $result->fetch_field();
         if (in_array($info->type, array(
