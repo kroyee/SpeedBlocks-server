@@ -23,67 +23,6 @@ void JSONWrap::addPair(const sf::String& key, uint32_t value) {
 	pairs.push_back(newpair);
 }
 
-/*void JSONWrap::add1v1Stats(Client& client) {
-	clear();
-	addPair("key", client.conn->serverkey);
-	addPair("user_id", client.id);
-	addPair("table_name", "1v1");
-	addPair("points", client.stats.vsPoints);
-	addPair("rank", client.stats.vsRank);
-	addPair("played", client.stats.vsPlayed);
-	addPair("won", client.stats.vsWon);
-}
-
-void JSONWrap::addFFAStats(Client& client) {
-	clear();
-	addPair("key", client.conn->serverkey);
-	addPair("user_id", client.id);
-	addPair("table_name", "ffa");
-	addPair("points", client.stats.ffaPoints);
-	addPair("rank", client.stats.ffaRank);
-	addPair("played", client.stats.ffaPlayed);
-	addPair("won", client.stats.ffaWon);
-}
-
-void JSONWrap::addHeroStats(Client& client) {
-	clear();
-	addPair("key", client.conn->serverkey);
-	addPair("user_id", client.id);
-	addPair("table_name", "hero");
-	addPair("points", client.stats.heroPoints);
-	addPair("rank", client.stats.heroRank);
-	addPair("played", client.stats.heroPlayed);
-	addPair("won", client.stats.heroWon);
-}
-
-void JSONWrap::addTournamentStats(Client& client) {
-	clear();
-	addPair("key", client.conn->serverkey);
-	addPair("user_id", client.id);
-	addPair("table_name", "tstats");
-	addPair("gradeA", client.stats.gradeA);
-	addPair("gradeB", client.stats.gradeB);
-	addPair("gradeC", client.stats.gradeC);
-	addPair("gradeD", client.stats.gradeD);
-	addPair("played", client.stats.tournamentsPlayed);
-	addPair("won", client.stats.tournamentsWon);
-}
-
-void JSONWrap::addGeneralStats(Client& client) {
-	clear();
-	addPair("key", client.conn->serverkey);
-	addPair("user_id", client.id);
-	addPair("table_name", "gstats");
-	addPair("maxcombo", client.stats.maxCombo);
-	addPair("maxbpm", client.stats.maxBpm);
-	addPair("alert", client.stats.alert);
-	addPair("avgbpm", client.stats.avgBpm);
-	addPair("played", client.stats.totalPlayed);
-	addPair("won", client.stats.totalWon);
-	addPair("totalbpm", client.stats.totalBpm);
-	addPair("challenges_played", client.stats.challenges_played);
-}*/
-
 void JSONWrap::addStatsTable(Client& client, const std::string& table_name) {
 	clear();
 	addPair("key", client.conn->serverkey);

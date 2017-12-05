@@ -76,6 +76,21 @@ void ChallengeHolder::loadChallenges() {
 	challengeCount = challenges.size();
 
 	updateTime = conn.serverClock.getElapsedTime() + sf::seconds(60);
+
+	getChallengeScores();
+}
+
+void ChallengeHolder::getChallengeScores() {
+	JSONWrap jwrap;
+	jwrap.addPair("key", conn.serverkey);
+
+	auto response = jwrap.sendPost("/get_challenges.php");
+
+	auto json = nlohmann::json::parse(response.getBody());
+
+	for (auto& challenge : challenges)
+		if (json.find(challenge->name.toAnsiString()) != json.end())
+			challenge->loadScores(json);
 }
 
 void ChallengeHolder::sendChallengeList(Client& client) {
@@ -202,8 +217,8 @@ void Challenge::addScore(Client& client, uint32_t duration, uint16_t blocks) {
 	scoreCount++;
 }
 
-void Challenge::loadScores() {
-	std::ifstream file("Challenges/" + name);
+void Challenge::loadScores(nlohmann::json json) {
+	/*std::ifstream file("Challenges/" + name);
 
 	if (!file.is_open()) {
 		cout << "Failed to load scores for " << name.toAnsiString() << endl;
@@ -238,7 +253,21 @@ void Challenge::loadScores() {
 		scores.push_back(score);
 		scoreCount++;
 	}
-	file.close();
+	file.close();*/
+
+	for (auto it = json[name].begin(); it != json[name].end(); ++it) {
+		Score score;
+		score.id = stoi(it.key());
+		score.column.resize(it.value().size()-1);
+		int column_count=0;
+		for (auto it2 = it.value().begin(); it2 != it.value().end(); ++it2) {
+			if (it2.key() == "name")
+				score.name = it2.value().get<std::string>();
+			else
+				score.column[column_count++] = it2.value().get<std::string>();
+		}
+	}
+
 	scores.sort([&](Score& s1, Score& s2){ return sort(s1, s2); });
 }
 
@@ -279,7 +308,7 @@ CH_Race::CH_Race() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	loadScores();
+	//loadScores();
 }
 
 void CH_Race::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -305,7 +334,7 @@ CH_Cheese::CH_Cheese() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	loadScores();
+	//loadScores();
 }
 
 void CH_Cheese::setColumns(Client&, uint16_t blocks, Score& score) {
@@ -331,7 +360,7 @@ CH_Survivor::CH_Survivor() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Cleared"));
 	columns.push_back(Column(270, "Time"));
-	loadScores();
+	//loadScores();
 }
 
 void CH_Survivor::setColumns(Client& client, uint16_t, Score& score) {
@@ -361,7 +390,7 @@ CH_Cheese30L::CH_Cheese30L() {
 	columns.push_back(Column(0, "Name"));
 	columns.push_back(Column(200, "Blocks"));
 	columns.push_back(Column(270, "Time"));
-	loadScores();
+	//loadScores();
 }
 
 void CH_Cheese30L::setColumns(Client&, uint16_t blocks, Score& score) {
