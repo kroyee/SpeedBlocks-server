@@ -1,6 +1,6 @@
 #include "StatsHolders.h"
 
-std::unordered_map<std::string, std::function<void(StatsHolder*, uint32_t)>> StatsHolder::setMap;
+std::unordered_map<std::string, std::function<void(StatsHolder*, int64_t)>> StatsHolder::setMap;
 std::unordered_map<std::string, StatsHolder::variable_holder> StatsHolder::getMap;
 
 void StatsHolder::mapStringsToVariables() {
