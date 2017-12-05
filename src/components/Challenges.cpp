@@ -269,6 +269,11 @@ void Challenge::sendScores(sf::String serverkey) {
 	    	cout << "Challenge save success!\n" << response.getBody() << endl;
 	    else
 	        cout << "Challenge save fail!\n" << response.getBody() << endl;
+
+	    if (score.replay.id && score.update)
+			score.replay.save("Challenges/" + name + "." + score.name);
+
+		score.update=false;
 	}
 }
 
