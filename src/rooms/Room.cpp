@@ -54,28 +54,14 @@ void Room::transfearScore() {
 		for (auto&& client : conn.clients)
 			if (leaver.id == client.id) {
 				client.stats.ffaPoints += leaver.stats.ffaPoints;
-				if (client.stats.ffaPoints>1000) {
-					client.stats.ffaPoints=0;
-					client.stats.ffaRank--;
-				}
-				if (client.stats.ffaPoints<-1000) {
-					client.stats.ffaPoints=0;
-					client.stats.ffaRank++;
-				}
+				client.stats.updateFFARank();
 				client.stats.vsPoints = leaver.stats.vsPoints;
 				client.stats.heroPoints = leaver.stats.heroPoints;
 			}
 		for (auto&& client : conn.uploadData)
 			if (leaver.id == client.id) {
 				client.stats.ffaPoints += leaver.stats.ffaPoints;
-				if (client.stats.ffaPoints>1000) {
-					client.stats.ffaPoints=0;
-					client.stats.ffaRank--;
-				}
-				if (client.stats.ffaPoints<-1000) {
-					client.stats.ffaPoints=0;
-					client.stats.ffaRank++;
-				}
+				client.stats.updateFFARank();
 				client.stats.vsPoints = leaver.stats.vsPoints;
 				client.stats.heroPoints = leaver.stats.heroPoints;
 			}
@@ -497,18 +483,7 @@ void FFARoom::scoreRound() {
 		float pointcoff = ((((float)i+1)/(float)playersinround) - 1.0/(float)playersinround  - (1.0-1.0/(float)playersinround)/2.0) * (-1.0/ ((1.0-1.0/(float)playersinround)/2.0) );
 		pointcoff += (client->stats.ffaRank - avgrank) * 0.05 + 0.2;
 		client->stats.ffaPoints += 100*pointcoff*(client->stats.ffaRank/5.0);
-		if (client->stats.ffaPoints > 1000) {
-			client->stats.ffaRank--;
-			client->stats.ffaPoints=0;
-		}
-		else if (client->stats.ffaPoints < -1000) {
-			if (client->stats.ffaRank == 25)
-				client->stats.ffaPoints = -1000;
-			else {
-				client->stats.ffaRank++;
-				client->stats.ffaPoints=0;
-			}
-		}
+		client->stats.updateFFARank();
 
 		i++;
 	}

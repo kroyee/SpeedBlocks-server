@@ -16,12 +16,7 @@ public:
 	std::list<Pair> pairs;
 
 	void addPair(const sf::String& key, const sf::String& value, bool wrapinquotes=true);
-	void addPair(const sf::String& key, uint32_t value);
-	/*void add1v1Stats(Client& client);
-	void addFFAStats(Client& client);
-	void addHeroStats(Client& client);
-	void addTournamentStats(Client& client);
-	void addGeneralStats(Client& client);*/
+	void addPair(const sf::String& key, int64_t value);
 	void addStatsTable(Client& client, const std::string& table_name);
 	std::string getJsonString();
 	void jsonToClientStats(StatsHolder& stats, std::string jsonString);

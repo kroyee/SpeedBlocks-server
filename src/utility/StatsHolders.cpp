@@ -3,6 +3,25 @@
 std::unordered_map<std::string, std::function<void(StatsHolder*, int64_t)>> StatsHolder::setMap;
 std::unordered_map<std::string, StatsHolder::variable_holder> StatsHolder::getMap;
 
+void StatsHolder::updateFFARank() {
+	if (ffaPoints>1000) {
+		if (ffaRank == 0)
+			ffaPoints = 1000;
+		else {
+			ffaPoints=0;
+			ffaRank--;
+		}
+	}
+	if (ffaPoints<-1000) {
+		if (ffaRank == 25)
+			ffaPoints = -1000;
+		else {
+			ffaPoints=0;
+			ffaRank++;
+		}
+	}
+}
+
 void StatsHolder::mapStringsToVariables() {
 	StatsHolder::bind("gstats", "maxcombo", &StatsHolder::maxCombo);
 	StatsHolder::bind("gstats", "maxbpm", &StatsHolder::maxBpm);

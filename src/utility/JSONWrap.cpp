@@ -16,7 +16,7 @@ void JSONWrap::addPair(const sf::String& key, const sf::String& value, bool wrap
 	pairs.push_back(newpair);
 }
 
-void JSONWrap::addPair(const sf::String& key, uint32_t value) {
+void JSONWrap::addPair(const sf::String& key, int64_t value) {
 	Pair newpair;
 	newpair.key = key;
 	newpair.value = to_string(value);

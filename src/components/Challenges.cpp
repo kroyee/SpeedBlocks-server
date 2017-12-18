@@ -48,23 +48,6 @@ void ChallengeHolder::saveChallenges() {
 			continue;
 		cout << "Saving challenge " << chall->name.toAnsiString() << endl;
 		chall->sendScores(conn.serverkey);
-		/*std::ofstream file("Challenges/" + chall->name);
-		if (!file.is_open()) {
-			cout << "Failed to save challenge " << chall->name.toAnsiString() << endl;
-			continue;
-		}
-		for (auto&& score : chall->scores) {
-			file << score.id << endl;
-			file << score.name.toAnsiString() << endl;
-			file << score.duration << endl;
-			for (auto& col : score.column)
-				file << col.toAnsiString() << endl;
-			if (score.replay.id && score.update)
-				score.replay.save("Challenges/" + chall->name + "." + score.name);
-			score.update=false;
-		}
-		chall->update=false;
-		file.close();*/
 	}
 }
 
@@ -275,6 +258,8 @@ void Challenge::sendScores(sf::String serverkey) {
 
 		score.update=false;
 	}
+
+	update = false;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -429,7 +429,7 @@ void Connections::manageClients() {
 	}
 
 	if (serverClock.getElapsedTime() > users_online_update) {
-		users_online_update = serverClock.getElapsedTime();
+		users_online_update = serverClock.getElapsedTime() + sf::seconds(60);
 		jwrap.addPair("key", serverkey);
 		sf::Http::Response response = jwrap.sendPost("/set_usersonline.php");
 

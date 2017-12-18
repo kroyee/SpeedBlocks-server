@@ -28,6 +28,8 @@ struct StatsHolder {
 	uint16_t gradeA=0, gradeB=0, gradeC=0, gradeD=0;
 	uint32_t tournamentsPlayed=0, tournamentsWon=0;
 
+	void updateFFARank();
+
 	void set(const std::string& name, int64_t value) {
 		setMap[name](this, value);
 	}
