@@ -9,10 +9,9 @@
 
 class AIManager {
 	std::list<AI> bots;
-	int count=0;
 	std::mutex listMutex;
 	sf::Clock& gameclock;
-	std::thread t;
+	std::thread aiThread;
 	std::atomic<bool> terminateThread;
 	std::atomic<uint8_t> alive;
 	Signal<void, uint16_t, RoundStats&, uint16_t>& botSendLines;
@@ -20,11 +19,13 @@ public:
 	AIManager(sf::Clock& _gameclock, Signal<void, uint16_t, RoundStats&, uint16_t>& _sendLines);
 	void setAmount(unsigned int amount);
 	void threadRun();
-	int getCount() { return count; }
+	std::size_t count() { return bots.size(); }
 	void sendLines(uint16_t senderid, float amount);
 
 	void startRound();
-	void startCountDown();
+	void endRound(const sf::Time& t);
+	void startCountdown(uint16_t seed1, uint16_t seed2);
+	void countDown(int count);
 
 	AI* getBot(uint16_t id);
 };

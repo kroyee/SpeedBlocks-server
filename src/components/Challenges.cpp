@@ -70,6 +70,9 @@ void ChallengeHolder::getChallengeScores() {
 
 	auto response = jwrap.sendPost("/get_challenges.php");
 
+	if (response.getStatus() != sf::Http::Response::Status::Ok)
+		return;
+
 	auto json = nlohmann::json::parse(response.getBody());
 
 	for (auto& challenge : challenges)

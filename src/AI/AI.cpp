@@ -87,8 +87,6 @@ void AI::continueMove() {
 	if (gameclock.getElapsedTime() <= movepieceTime)
 		return;
 
-	std::lock_guard<std::mutex> guard(moveQueueMutex);
-
 	while (movingPiece && gameclock.getElapsedTime() > movepieceTime) {
 		moveQueue.push_back(*moveIterator);
 
@@ -107,12 +105,12 @@ void AI::continueMove() {
 			else if (firstMove.totalHeight < 15)
 				setMode(Mode::Stack);
 		}
+
+		executeMove();
 	}
 }
 
 bool AI::executeMove() {
-	std::lock_guard<std::mutex> guard(moveQueueMutex);
-
 	while (!moveQueue.empty()) {
 		if (moveQueue.front() == 255)
 			field.mRight();
@@ -146,8 +144,10 @@ bool AI::executeMove() {
 
 			bpmCounter.addPiece(gameclock.getElapsedTime());
 
-			if (!field.possible())
+			if (!field.possible()) {
+				alive=false;
 				return true;
+			}
 		}
 		
 		moveQueue.pop_front();
@@ -236,8 +236,10 @@ bool AI::playAI() {
 void AI::aiThreadRun() {
 	if (movingPiece)
 		continueMove();
-	else if (updateField == 2) {
-		updateField=0;
+	else if (gameclock.getElapsedTime() > nextmoveTime) {
+		nextmoveTime += moveTime;
+		firstMove.square = field.square;
+		firstMove.setPiece(field.piece.piece);
 
 		firstMove.calcHeightsAndHoles();
 		if (data.pieceCount < 5)
@@ -254,10 +256,10 @@ void AI::aiThreadRun() {
 		firstMove.tryAllMoves(secondMove, nextpiece, pieceAdjust);
 		startMove();
 	}
-	else if (!updateField && gameclock.getElapsedTime() > nextmoveTime) {
-		updateField = 1;
-		nextmoveTime += moveTime;
-	}
+
+
+	if (gameclock.getElapsedTime() > updateGameDataTime)
+		updateGameData();
 }
 
 void AI::startRound() {
@@ -270,6 +272,7 @@ void AI::startRound() {
 	setNextPiece(rander.getPiece());
 	movepieceTime = sf::seconds(0);
 	nextmoveTime = sf::seconds(0);
+	updateGameDataTime = sf::seconds(0);
 	alive=true;
 	updateField=0;
 	adjustDownMove=false;
@@ -282,12 +285,13 @@ void AI::startCountdown() {
 	bpmCounter.clear();
 }
 
-void AI::countDown(int) {
+void AI::countDown(int count) {
+	updateGameData(count);
 }
 
 void AI::endRound(const sf::Time& _time, bool) {
 	alive = false;
-	data.bpm = data.pieceCount / _time.asSeconds() * 60.0;
+	data.bpm = static_cast<float>(data.pieceCount) / _time.asSeconds() * 60.0;
 }
 
 void AI::delayCheck(const sf::Time& t) {
@@ -398,40 +402,46 @@ void AI::setPieceColor(short i, uint8_t newcolor) {
 }
 
 std::vector<short> AI::pieceArray() {
-	std::vector<short> value = { 0, 4, 0, 0,
-						 0, 4, 0, 0,
-						 0, 4, 4, 0,
-						 0, 0, 0, 0,
+	std::vector<short> value = {
+		0, 4, 0, 0,
+		0, 4, 0, 0,
+		0, 4, 4, 0,
+		0, 0, 0, 0,
 
-						 0, 3, 0, 0,
-						 0, 3, 0, 0,
-						 3, 3, 0, 0,
-						 0, 0, 0, 0,
+		0, 3, 0, 0,
+		0, 3, 0, 0,
+		3, 3, 0, 0,
+		0, 0, 0, 0,
 
-						 0, 5, 0, 0,
-						 0, 5, 5, 0,
-						 0, 0, 5, 0,
-						 0, 0, 0, 0,
+		0, 5, 0, 0,
+		0, 5, 5, 0,
+		0, 0, 5, 0,
+		0, 0, 0, 0,
 
-						 0, 7, 0, 0,
-						 7, 7, 0, 0,
-						 7, 0, 0, 0,
-						 0, 0, 0, 0,
+		0, 7, 0, 0,
+		7, 7, 0, 0,
+		7, 0, 0, 0,
+		0, 0, 0, 0,
 
-						 0, 2, 0, 0,
-						 0, 2, 0, 0,
-						 0, 2, 0, 0,
-						 0, 2, 0, 0,
+		0, 2, 0, 0,
+		0, 2, 0, 0,
+		0, 2, 0, 0,
+		0, 2, 0, 0,
 
-						 0, 0, 0, 0,
-						 1, 1, 1, 0,
-						 0, 1, 0, 0,
-						 0, 0, 0, 0,
+		0, 0, 0, 0,
+		1, 1, 1, 0,
+		0, 1, 0, 0,
+		0, 0, 0, 0,
 
-						 0, 0, 0, 0,
-						 0, 6, 6, 0,
-						 0, 6, 6, 0,
-						 0, 0, 0, 0 };
+		0, 0, 0, 0,
+		0, 6, 6, 0,
+		0, 6, 6, 0,
+		0, 0, 0, 0
+	};
 
 	return value;
+}
+
+void AI::updateGameData(int count) {
+	
 }

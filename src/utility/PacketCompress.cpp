@@ -1,5 +1,6 @@
 #include "PacketCompress.h"
 #include "Client.h"
+#include "AI.h"
 
 void PacketCompress::extract(HistoryState& history) {
 	tmpcount=0;
@@ -57,4 +58,89 @@ void PacketCompress::getBits(uint8_t& byte, uint8_t bits) {
 	temp = temp<<(8-bits);
 	temp = temp>>(8-bits);
 	byte=temp;
+}
+
+void PacketCompress::compress(AI& ai) {
+	tmp.clear();
+	tmpcount=0;
+	bitcount=0;
+	uint8_t counter = 0;
+	int y, endy;
+	for (endy=21; endy>=0; endy--) {
+		if (ai.field.square[endy][0]==8 || ai.field.square[endy][1]==8)
+			counter++;
+		else
+			break;
+	}
+	addBits(counter, 5);
+	for (y=21; y>endy; y--)
+		for (uint8_t x=0; x<10; x++)
+			if (ai.field.square[y][x] == 0) {
+				addBits(x, 4);
+				break;
+			}
+	for (int x=0; x<10; x++) {
+		counter=0;
+		for (y=0; y<=endy; y++) {
+			if (!ai.field.square[y][x])
+				counter++;
+			else
+				break;
+		}
+		addBits(counter, 5);
+		for (; y<=endy; y++) {
+			addBits(ai.field.square[y][x], 3);
+		}
+	}
+	uint8_t posx=0, posy=0;
+	posx = ai.field.piece.posX+2; posy = ai.field.piece.posY;
+	addBits(posx, 4);
+	addBits(posy, 5);
+	if (ai.countdown)
+		addBits(7, 3);
+	else
+		addBits(ai.field.piece.piece, 3);
+	addBits(ai.field.piece.tile, 3);
+	addBits(ai.field.piece.current_rotation, 2);
+	addBits(ai.nextpiece, 3);
+	addBits(ai.basepiece[ai.nextpiece].tile, 3);
+	addBits(ai.nprot, 2);
+	addBits(ai.combo.comboCount, 5);
+	addBits(ai.garbage.count(), 8);
+	uint8_t tmp;
+	if (ai.bpmCounter.calcBpm(ai.gameclock.getElapsedTime()) > 255)
+		tmp=255;
+	else
+		tmp = ai.bpmCounter.bpm;
+	addBits(tmp, 8);
+	addBits(ai.combo.timerCount(ai.gameclock.getElapsedTime()), 7);
+	addBits(ai.countdown, 2);
+}
+
+void PacketCompress::addBits(uint8_t byte, uint8_t bits) {
+	if (tmpcount >= tmp.size())
+		tmp.push_back(0);
+	tmp[tmpcount] = tmp[tmpcount] | byte<<bitcount;
+	bitcount+=bits;
+	if (bitcount>7) {
+		bitcount-=8;
+		tmpcount++;
+		if (bitcount>0) {
+			tmp.push_back(0);
+			tmp[tmpcount] = tmp[tmpcount] | byte>>(bits-bitcount);
+		}
+	}
+}
+
+void PacketCompress::dumpTmp(sf::Packet& packet) {
+	for (auto i : tmp)
+		packet << i;
+}
+
+void PacketCompress::loadTmp(sf::Packet& packet) {
+	tmpcount=0;
+	tmp.clear();
+	uint8_t temp;
+	while (packet >> temp)
+		tmp.push_back(temp);
 }

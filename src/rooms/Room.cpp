@@ -35,6 +35,7 @@ void Room::startGame() {
 			client->alive=true;
 		}
 	}
+	aiManager.startRound();
 }
 
 void Room::startCountdown() {
@@ -47,6 +48,7 @@ void Room::startCountdown() {
 	sendSignalToActive(4, seed1, seed2);
 	sendSignalToAway(10, seed1, seed2);
 	sendSignalToSpectators(10, seed1, seed2);
+	aiManager.startCountdown(seed1, seed2);
 }
 
 void Room::transfearScore() {
@@ -77,6 +79,7 @@ void Room::endRound() {
 	countdown=false;
 	roundLenght = start.restart();
 	sendSignal(7);
+	aiManager.endRound(roundLenght);
 }
 
 void Room::join(Client& jClient) {
@@ -172,6 +175,16 @@ void Room::removeSpectator(Client& client) {
 			client.spectating = nullptr;
 			return;
 		}
+}
+
+void Room::setBots(uint8_t count) {
+	auto currentAmount = aiManager.count();
+	if (count == currentAmount)
+		return;
+	aiManager.setAmount(count);
+	currentPlayers += count - currentAmount;
+	activePlayers += count - currentAmount;
+	botCount += count - currentAmount;
 }
 
 void Room::sendNewPlayerInfo(Client& client) {

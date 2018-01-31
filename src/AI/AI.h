@@ -30,7 +30,7 @@ public:
 	uint8_t piecerotation[7];
 	uint8_t colormap[7];
 
-	uint8_t nextpiece, nprot, npcol, offset;
+	uint8_t nextpiece, nprot, npcol, offset, countdown;
 	std::atomic<int> linesToBeSent;
 
 	sf::Vector2i well2Pos;
@@ -48,7 +48,7 @@ public:
 	std::deque<uint8_t> moveQueue;
 	std::vector<uint8_t>::iterator moveIterator;
 
-	sf::Time nextmoveTime, movepieceTime, moveTime, finesseTime;
+	sf::Time nextmoveTime, movepieceTime, moveTime, finesseTime, updateGameDataTime;
 
 	randomizer rander;
 	BPMCount bpmCounter;
@@ -59,7 +59,7 @@ public:
 	sf::Clock& gameclock;
 
 	std::atomic<uint8_t> updateField;
-	std::mutex moveQueueMutex;
+	std::mutex gamedataMutex;
 	std::atomic<bool> alive, adjustDownMove, movingPiece;
 
 	AI(sf::Clock& _gameclock);
@@ -93,6 +93,8 @@ public:
 	void initBasePieces();
 	void setPieceColor(short i, uint8_t newcolor);
 	std::vector<short> pieceArray();
+
+	void updateGameData(int count=0);
 };
 
 #endif

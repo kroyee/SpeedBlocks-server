@@ -150,8 +150,6 @@ void Lobby::addRoom(const sf::String& name, short max, uint16_t mode, uint8_t de
 	rooms.back()->name = name;
 	rooms.back()->id = idcount;
 	rooms.back()->maxPlayers = max;
-	rooms.back()->currentPlayers = 0;
-	rooms.back()->activePlayers = 0;
 	rooms.back()->timeBetweenRounds = sf::seconds(delay);
 	cout << "Adding room " << rooms.back()->name.toAnsiString() << " as " << rooms.back()->id << endl;
 	idcount++;

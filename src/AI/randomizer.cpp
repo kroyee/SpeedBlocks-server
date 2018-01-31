@@ -2,7 +2,7 @@
 #include "GameSignals.h"
 
 randomizer::randomizer() {
-	Signals::SeedRander.connect([&](uint16_t piece, uint16_t hole){
+	connectSignal("SeedRander", [&](uint16_t piece, uint16_t hole){
 		seedPiece(piece);
 		seedHole(hole);
 		reset();

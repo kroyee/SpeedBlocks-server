@@ -335,9 +335,9 @@ void Connections::getGamestate(sf::Packet& packet) {
 		if (sender->history.states.size() > 100)
 			sender->history.states.pop_back();
 
-		for (int c=0; packet >> extractor.tmp[c]; ++c) {}
+		extractor.loadTmp(packet);
 		extractor.extract(sender->history.states.front());
-		sender->history.validate();
+		//sender->history.validate();
 	}
 }
 

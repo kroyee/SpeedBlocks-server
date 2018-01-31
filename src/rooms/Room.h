@@ -21,8 +21,9 @@ public:
 	uint16_t id;
 
 	uint8_t maxPlayers;
-	uint8_t currentPlayers;
-	uint8_t activePlayers;
+	uint8_t currentPlayers = 0;
+	uint8_t botCount = 0;
+	uint8_t activePlayers = 0;
 
 	std::list<Client*> clients;
 	std::list<Client*> spectators;
@@ -56,6 +57,8 @@ public:
 
 	bool addSpectator(Client&);
 	void removeSpectator(Client&);
+
+	void setBots(uint8_t count);
 
 	void startGame();
 	void endRound();
