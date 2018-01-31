@@ -337,7 +337,7 @@ void Connections::getGamestate(sf::Packet& packet) {
 
 		for (int c=0; packet >> extractor.tmp[c]; ++c) {}
 		extractor.extract(sender->history.states.front());
-		sender->history.validate();
+		//sender->history.validate();
 	}
 }
 

@@ -613,7 +613,7 @@ void Tournament::checkIfStart() {
 				if (time(NULL) > startingTime-1200) {
 					notify=true;
 					JSONWrap jwrap;
-					sf::String cont = "<@&385512787775979531> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
+					sf::String cont = "<@&384787999675645963> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
 					for (auto& player : participants)
 						cont += player.name + " ";
 					jwrap.addPair("content", cont);
