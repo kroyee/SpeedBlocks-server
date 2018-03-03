@@ -9,7 +9,8 @@ firstMove(*this),
 secondMove(*this),
 garbage(data.linesBlocked),
 combo(data.maxCombo),
-gameclock(_gameclock) {
+gameclock(_gameclock),
+datavalid(false) {
 	movingPiece=false;
 	nextmoveTime=sf::seconds(0);
 	movepieceTime=sf::seconds(0);
@@ -22,6 +23,14 @@ gameclock(_gameclock) {
 	piecerotation[4] = 1;
 	piecerotation[5] = 2;
 	piecerotation[6] = 0;
+
+	colormap[0] = 4;
+	colormap[1] = 3;
+	colormap[2] = 5;
+	colormap[3] = 7;
+	colormap[4] = 2;
+	colormap[5] = 1;
+	colormap[6] = 6;
 
 	initBasePieces();
 	setPiece(0);
@@ -233,7 +242,7 @@ bool AI::playAI() {
 	return false;
 }
 
-void AI::aiThreadRun() {
+bool AI::aiThreadRun() {
 	if (movingPiece)
 		continueMove();
 	else if (gameclock.getElapsedTime() > nextmoveTime) {
@@ -257,9 +266,12 @@ void AI::aiThreadRun() {
 		startMove();
 	}
 
+	if (gameclock.getElapsedTime() > updateGameDataTime) {
+		updateGameDataTime = gameclock.getElapsedTime();
+		return true;
+	}
 
-	if (gameclock.getElapsedTime() > updateGameDataTime)
-		updateGameData();
+	return false;
 }
 
 void AI::startRound() {
@@ -283,6 +295,7 @@ void AI::startCountdown() {
 	garbage.clear();
 	combo.clear();
 	bpmCounter.clear();
+	gameStateCount=0;
 }
 
 void AI::countDown(int count) {

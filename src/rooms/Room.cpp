@@ -308,6 +308,8 @@ void Room::sendGameData() {
 			fromClient->datavalid=false;
 		}
 	}
+
+	aiManager.sendGameData(*this);
 }
 
 void Room::makeCountdown() {

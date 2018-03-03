@@ -10,6 +10,7 @@
 #include "DropDelay.h"
 #include "GameSignals.h"
 #include "StatsHolders.h"
+#include <SFML/Network.hpp>
 #include <vector>
 #include <deque>
 #include <thread>
@@ -30,7 +31,7 @@ public:
 	uint8_t piecerotation[7];
 	uint8_t colormap[7];
 
-	uint8_t nextpiece, nprot, npcol, offset, countdown;
+	uint8_t nextpiece, nprot, npcol, offset, countdown, gameStateCount=0;
 	std::atomic<int> linesToBeSent;
 
 	sf::Vector2i well2Pos;
@@ -62,6 +63,9 @@ public:
 	std::mutex gamedataMutex;
 	std::atomic<bool> alive, adjustDownMove, movingPiece;
 
+	sf::Packet gameState;
+	std::atomic<bool> datavalid;
+
 	AI(sf::Clock& _gameclock);
 
 	void startMove();
@@ -78,7 +82,7 @@ public:
 	void setSpeed(uint16_t speed);
 
 	bool playAI();
-	void aiThreadRun();
+	bool aiThreadRun();
 
 	void startRound();
 	void startCountdown();

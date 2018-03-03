@@ -1,4 +1,6 @@
 #include "AIManager.h"
+#include "Room.h"
+#include <iostream>
 
 AIManager::AIManager(sf::Clock& _gameclock, Signal<void, uint16_t, RoundStats&, uint16_t>& _sendLines) :
 gameclock(_gameclock),
@@ -14,11 +16,16 @@ void AIManager::setAmount(unsigned int amount) {
 }
 
 void AIManager::threadRun() {
-	while (terminateThread) {
+	while (!terminateThread) {
 		for (auto& bot : bots)
 			if (bot.alive)
-				bot.aiThreadRun();
-
+				if (bot.aiThreadRun()) {
+					compressor.compress(bot);
+					bot.gameState.clear();
+					bot.gameState << (uint8_t)100 << bot.id << bot.gameStateCount++;
+					compressor.dumpTmp(bot.gameState);
+					bot.datavalid = true;
+				}
 		sf::sleep(sf::seconds(0));
 	}
 }
@@ -66,4 +73,14 @@ AI* AIManager::getBot(uint16_t id) {
 		if (bot.id == id)
 			return &bot;
 	return nullptr;
+}
+
+void AIManager::sendGameData(Room& room) {
+	for (auto& bot : bots) {
+		if (bot.datavalid) {
+			room.sendPacket(bot.gameState);
+			bot.datavalid = false;
+			std::cout << "Sending gamestate from bot" << std::endl;
+		}
+	}
 }

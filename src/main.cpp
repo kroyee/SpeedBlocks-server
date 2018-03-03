@@ -76,5 +76,8 @@ int main() {
 	conn.udpSock.unbind();
 
 	t.join();
+
+	for (auto& room : conn.lobby.rooms)
+		room->endRound();
 	return 0;
 }

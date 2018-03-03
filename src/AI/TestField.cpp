@@ -33,20 +33,26 @@ void TestField::removePiece() {
 }
 
 void TestField::setPiece(int _piece) {
+	/*cout << "Setting piece" << endl;
 	piece.piece = ai.basepiece[_piece].piece;
 	piece.tile = ai.basepiece[_piece].tile;
 	piece.rotation = ai.basepiece[_piece].rotation;
-	piece.posX = 3;
-	piece.posY = 0;
 
 	for (int x=0; x<4; x++)
         for (int y=0; y<4; y++) {
-            if (ai.basepiece[piece.piece].grid[y][x])
+            if (ai.basepiece[piece.piece].grid[y][x]) {
+            	cout << "Setting tile" << endl;
                 piece.grid[y][x] = piece.tile;
+            }
             else
                 piece.grid[y][x] = 0;
         }
-    piece.lpiece = ai.basepiece[piece.piece].lpiece;
+    piece.lpiece = ai.basepiece[piece.piece].lpiece;*/
+
+    piece = ai.basepiece[_piece];
+
+    piece.posX = 3;
+	piece.posY = 0;
     piece.current_rotation = 0;
 }
 
@@ -328,7 +334,6 @@ void TestField::tryAllMoves(TestField& field, uint8_t nextpiece, float moveAdjus
 			piece.posY=0;
 			if (!possible())
 				continue;
-
 			findNextMove(field, nextpiece, moveAdjust);
 		}
 	}
@@ -341,7 +346,6 @@ void TestField::tryAllMoves(TestField& field, uint8_t nextpiece, float moveAdjus
 					piece.rcw();
 				if (!possible())
 					continue;
-
 				findNextMove(field, nextpiece, moveAdjust);
 			}
 		}
@@ -355,7 +359,6 @@ void TestField::tryAllMoves(TestField& field, uint8_t nextpiece, float moveAdjus
 					piece.rcw();
 				if (!possible())
 					continue;
-
 				findNextMove(field, nextpiece, moveAdjust);
 			}
 		}
@@ -364,10 +367,8 @@ void TestField::tryAllMoves(TestField& field, uint8_t nextpiece, float moveAdjus
 
 void TestField::findNextMove(TestField& field, uint8_t nextpiece, float moveAdjust) {
 	field.pieceNextToWall = nextToWall();
-
 	hd();
 	checkNextMove(field, nextpiece);
-
 	if (piece.posY < 5)
 		field.move.score -= 100;
 
@@ -379,7 +380,6 @@ void TestField::findNextMove(TestField& field, uint8_t nextpiece, float moveAdju
 		move.rot=piece.current_rotation;
 		move.use_path=false;
 	}
-
 	tryAllFinesseMoves(field, nextpiece);
 }
 
