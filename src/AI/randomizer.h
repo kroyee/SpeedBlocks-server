@@ -20,7 +20,7 @@ class UniformRealDistribution
     template <class Generator>
     T operator()(Generator &_g)
     {
-        double dScale = (m_b - m_a) / ((T)(_g.max() - _g.min()) + (T)1); 
+        double dScale = (m_b - m_a) / ((T)(_g.max() - _g.min()) + (T)1);
         return (_g() - _g.min()) * dScale  + m_a;
     }
 
@@ -40,20 +40,21 @@ public:
 
 	float cogP[7];
 
-    short lasthole;
+  short lasthole;
 
 	std::mt19937 hole_gen;
-    UniformRealDistribution<float> hole_dist;
+  UniformRealDistribution<float> hole_dist;
 
-    std::mt19937 piece_gen;
-    UniformRealDistribution<float> piece_dist;
+  std::mt19937 piece_gen;
+  UniformRealDistribution<float> piece_dist;
 
-    std::mt19937 AI_gen;
+  std::mt19937 AI_gen;
 
-    short getHole(bool noStack=false);
-    void seedHole(short seedNr);
-    void seedPiece(short seedNr);
+  short getHole(bool noStack=false);
+  void seedHole(short seedNr);
+  void seedPiece(short seedNr);
 	short getPiece();
+  float get();
 	void reset();
 };
 

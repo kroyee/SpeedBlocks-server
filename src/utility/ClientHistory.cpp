@@ -39,7 +39,7 @@ void PlayfieldHistory::validate() {
 	}
 
 	if (timeDiffDirectionCount > 25) {
-		cout << client->name.toAnsiString() << " was kicked from " << client->room->name.toAnsiString() << " for timeDiffDirectionCount violation" << endl;
+		cout << client->name << " was kicked from " << client->room->name << " for timeDiffDirectionCount violation" << endl;
 		client->sendSignal(17, 1);
 		client->room->leave(*client);
 	}

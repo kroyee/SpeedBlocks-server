@@ -1,16 +1,18 @@
 #include "AI.h"
+#include "Room.h"
+#include "TaskQueue.h"
 #include <fstream>
 #include <iostream>
 using std::cout;
 using std::endl;
 
-AI::AI(sf::Clock& _gameclock) :
+AI::AI(Room& room_) :
 firstMove(*this),
 secondMove(*this),
-garbage(data.linesBlocked),
-combo(data.maxCombo),
-gameclock(_gameclock),
-datavalid(false) {
+garbage(roundStats.linesBlocked),
+combo(roundStats.maxCombo),
+gameclock(room_.start) {
+	room = &room_;
 	movingPiece=false;
 	nextmoveTime=sf::seconds(0);
 	movepieceTime=sf::seconds(0);
@@ -114,9 +116,8 @@ void AI::continueMove() {
 			else if (firstMove.totalHeight < 15)
 				setMode(Mode::Stack);
 		}
-
-		executeMove();
 	}
+	executeMove();
 }
 
 bool AI::executeMove() {
@@ -146,7 +147,7 @@ bool AI::executeMove() {
 			field.addPiece();
 
 			sendLines(field.clearlines(), gameclock.getElapsedTime());
-			data.pieceCount++;
+			roundStats.pieceCount++;
 
 			setPiece(nextpiece);
 			setNextPiece(rander.getPiece());
@@ -154,11 +155,12 @@ bool AI::executeMove() {
 			bpmCounter.addPiece(gameclock.getElapsedTime());
 
 			if (!field.possible()) {
-				alive=false;
+				endRound();
+				TaskQueue::push(0, [&](){ sf::Packet packet; getRoundData(packet); });
 				return true;
 			}
 		}
-		
+
 		moveQueue.pop_front();
 	}
 
@@ -178,7 +180,7 @@ void AI::setNextPiece(int piece) {
 }
 
 void AI::startAI() {
-	data.clear();
+	roundStats.clear();
 	gameCount=0;
 	field.clear();
 }
@@ -186,7 +188,7 @@ void AI::startAI() {
 void AI::restartGame() {
 	field.clear();
 	gameCount++;
-	data.clear();
+	roundStats.clear();
 	setMode(Mode::Stack);
 	setPiece(0);
 	field.piece.piece = 7;
@@ -226,23 +228,8 @@ void AI::setSpeed(uint16_t _speed) {
 	finesseTime = sf::microseconds(speed / 15.0);
 }
 
-bool AI::playAI() {
-	if (executeMove()) {
-		alive = false;
-		return true;
-	}
-
-	if (updateField == 1) {
-		firstMove.square = field.square;
-		firstMove.setPiece(field.piece.piece);
-		//nextpiece = field.nextpiece;
-		updateField = 2;
-	}
-
-	return false;
-}
-
 bool AI::aiThreadRun() {
+	delayCheck(gameclock.getElapsedTime());
 	if (movingPiece)
 		continueMove();
 	else if (gameclock.getElapsedTime() > nextmoveTime) {
@@ -251,9 +238,9 @@ bool AI::aiThreadRun() {
 		firstMove.setPiece(field.piece.piece);
 
 		firstMove.calcHeightsAndHoles();
-		if (data.pieceCount < 5)
+		if (roundStats.pieceCount < 5)
 			setMode(Mode::Stack, true);
-		else if (data.pieceCount == 5)
+		else if (roundStats.pieceCount == 5)
 			setMode(Mode::Stack);
 		else if (firstMove.totalHeight > 130 || firstMove.highestPoint > 17)
 			setMode(Mode::Downstack);
@@ -261,24 +248,25 @@ bool AI::aiThreadRun() {
 			setMode(Mode::Stack);
 
 		firstMove.calcHolesBeforePiece();
-		float pieceAdjust = (data.pieceCount < 5 ? rander.piece_dist(rander.AI_gen) * 0.5 - 0.25 : 0);
+		float pieceAdjust = (roundStats.pieceCount < 5 ? rander.piece_dist(rander.AI_gen) * 0.5 - 0.25 : 0);
 		firstMove.tryAllMoves(secondMove, nextpiece, pieceAdjust);
 		startMove();
 	}
 
 	if (gameclock.getElapsedTime() > updateGameDataTime) {
-		updateGameDataTime = gameclock.getElapsedTime();
+		updateGameDataTime = gameclock.getElapsedTime() + sf::milliseconds(100);
 		return true;
 	}
 
 	return false;
 }
 
-void AI::startRound() {
+void AI::startGame() {
 	garbage.clear();
 	combo.clear();
 	bpmCounter.clear();
 	pieceDropDelay.clear();
+	roundStats.clear();
 	incomingLines=0;
 	setPiece(nextpiece);
 	setNextPiece(rander.getPiece());
@@ -288,6 +276,8 @@ void AI::startRound() {
 	alive=true;
 	updateField=0;
 	adjustDownMove=false;
+	datavalid=false;
+	countdown=0;
 }
 
 void AI::startCountdown() {
@@ -295,16 +285,25 @@ void AI::startCountdown() {
 	garbage.clear();
 	combo.clear();
 	bpmCounter.clear();
-	gameStateCount=0;
+	datacount=250;
+	countdown=3;
+	updateGameData();
 }
 
-void AI::countDown(int count) {
-	updateGameData(count);
+void AI::countDown(const sf::Time& t) {
+	int count = 4 - t.asSeconds();
+	if (count < countdown) {
+		countdown = count;
+		updateGameData();
+	}
 }
 
-void AI::endRound(const sf::Time& _time, bool) {
+void AI::endRound() {
+	if (!alive)
+		return;
+
 	alive = false;
-	data.bpm = static_cast<float>(data.pieceCount) / _time.asSeconds() * 60.0;
+	roundStats.bpm = static_cast<float>(roundStats.pieceCount) / gameclock.getElapsedTime().asSeconds() * 60.0;
 }
 
 void AI::delayCheck(const sf::Time& t) {
@@ -324,13 +323,13 @@ void AI::delayCheck(const sf::Time& t) {
 	uint16_t comboLinesSent = combo.check(t);
 	if (comboLinesSent) {
 		comboLinesSent = garbage.block(comboLinesSent, t, false);
-		data.linesSent += comboLinesSent;
+		roundStats.linesSent += comboLinesSent;
 		if (comboLinesSent)
 			linesToBeSent+=comboLinesSent;
 		drawMe=true;
 	}
 
-	data.bpm = bpmCounter.calcBpm(t);
+	roundStats.bpm = bpmCounter.calcBpm(t);
 
 
 	setComboTimer(t);
@@ -360,14 +359,14 @@ void AI::setComboTimer(const sf::Time& t) {
 }
 
 void AI::sendLines(sf::Vector2i lines, const sf::Time& t) {
-	data.garbageCleared+=lines.y;
-	data.linesCleared+=lines.x;
+	roundStats.garbageCleared+=lines.y;
+	roundStats.linesCleared+=lines.x;
 	if (lines.x==0) {
 		combo.noClear();
 		return;
 	}
 	uint16_t amount = garbage.block(lines.x-1, t);
-	data.linesSent += amount;
+	roundStats.linesSent += amount;
 	if (amount)
 		linesToBeSent+=amount;
 	combo.increase(t, lines.x);
@@ -378,7 +377,7 @@ void AI::sendLines(sf::Vector2i lines, const sf::Time& t) {
 void AI::addGarbage(uint16_t amount, const sf::Time& t) {
 	garbage.add(amount, t);
 
-	data.linesReceived+=amount;
+	roundStats.linesReceived+=amount;
 }
 
 void AI::initBasePieces() {
@@ -399,10 +398,15 @@ void AI::initBasePieces() {
                 basepiece[p].grid[y][x] = value[vc];
 				vc++;
 			}
-        setPieceColor(p, basepiece[p].tile);
+    setPieceColor(p, basepiece[p].tile);
 	}
 	basepiece[4].lpiece=true;
 	basepiece[6].lpiece=true;
+
+	for (int i=0; i<7; i++) {
+		while (basepiece[i].rotation != basepiece[i].current_rotation)
+			basepiece[i].rcw();
+	}
 }
 
 void AI::setPieceColor(short i, uint8_t newcolor) {
@@ -455,6 +459,57 @@ std::vector<short> AI::pieceArray() {
 	return value;
 }
 
-void AI::updateGameData(int count) {
-	
+void AI::updateGameData() {
+	compressor.compress(*this);
+
+	std::lock_guard<std::mutex> guard(gamedataMutex);
+
+	data.clear();
+	data << (uint8_t)100 << id << datacount++;
+	compressor.dumpTmp(data);
+	datavalid = true;
+}
+
+void AI::sendLines() {
+	if (roundStats.incLines>=1) {
+		uint8_t amount = roundStats.incLines;
+		roundStats.incLines -= amount;
+		addGarbage(amount, gameclock.getElapsedTime());
+	}
+}
+
+uint16_t AI::sendLinesOut() {
+	uint16_t amount = linesToBeSent;
+	linesToBeSent -= amount;
+	return amount;
+}
+
+void AI::sendGameData(sf::UdpSocket& udp) {
+	std::lock_guard<std::mutex> guard(gamedataMutex);
+
+	for (auto& client : room->clients)
+		if (client->id != id)
+			client->sendGameDataOut(udp, data);
+
+	for (auto& client : room->spectators)
+		client->sendGameDataOut(udp, data);
+}
+
+void AI::seed(uint16_t seed1, uint16_t seed2, uint8_t) {
+	rander.seedPiece(seed1);
+	rander.seedHole(seed2);
+	rander.reset();
+	startCountdown();
+}
+
+void AI::getRoundData(sf::Packet&) {
+	if (room == nullptr)
+		return;
+	alive=false;
+	roundStats.position=room->playersAlive;
+	ready=false;
+	room->playerDied(*this);
+
+	room->sendSignal(13, id, roundStats.position);
+	room->sendSignalToSpectators(13, id, roundStats.position);
 }

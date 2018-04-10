@@ -3,6 +3,8 @@
 #include <thread>
 #include "Connections.h"
 #include "Tournament.h"
+#include "AsyncTask.h"
+#include "TaskQueue.h"
 using std::cout;
 using std::endl;
 
@@ -41,11 +43,11 @@ int main() {
 
 	conn.lobby.idcount=1; // Adding permanent rooms
 	conn.lobby.addRoom("Ranked FFA", 0, 1, 3);
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back());
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back());
 	conn.lobby.addRoom("Ranked Hero", 0, 2, 3);
 	conn.lobby.addRoom("Casual", 0, 3, 3);
 	conn.lobby.idcount=10;
-
-	conn.lobby.rooms.back()->setBots(2);
 
 	conn.lobby.setMsg("Press Enter at any time to activate the chat. Press Enter again to send a message or Esc to deactivate it. Press TAB while the chat is active to change where the message will go to, Room, Lobby or latest priv (shown next to chatbox). Use /w nickname to send private msg.\n\nYou can find some new visual options under the Visual tab. Including disabling that the menu reacts to the mouse.\nAPM in the score screen shows sent+blocked per minute.\n\nEnjoy! :-)");
 
@@ -57,11 +59,13 @@ int main() {
 		conn.manageTournaments();
 		conn.manageMatchmaking();
 		conn.lobby.challengeHolder.saveChallenges();
+		AsyncTask::check();
+		TaskQueue::perform(0);
 		if (status) {
 			for (auto&& client : conn.clients) {
-				cout << client.id << ": " << client.name.toAnsiString();
-				if (client.room != nullptr)
-					cout << " in room " << client.room->name.toAnsiString();
+				cout << client->id << ": " << client->name;
+				if (client->room != nullptr)
+					cout << " in room " << client->room->name;
 				cout << endl;
 			}
 			status=false;
@@ -69,13 +73,14 @@ int main() {
 	}
 
 	for (auto&& it : conn.clients) {
-		it.socket->disconnect();
-		delete it.socket;
+		it->disconnect();
 	}
 	conn.listener.close();
 	conn.udpSock.unbind();
 
 	t.join();
+	AsyncTask::exit();
+	conn.lobby.aiManager.clear();
 
 	for (auto& room : conn.lobby.rooms)
 		room->endRound();

@@ -9,7 +9,7 @@ using std::cout;
 using std::endl;
 using std::to_string;
 
-sf::String durationToString(uint32_t duration) {
+std::string durationToString(uint32_t duration) {
 	uint8_t minutes=0, seconds=0, parts=0;
 	while (duration >= 60000) {
 		minutes++;
@@ -23,7 +23,7 @@ sf::String durationToString(uint32_t duration) {
 		parts++;
 		duration-=10;
 	}
-	sf::String asString = to_string(minutes) + ":";
+	std::string asString = to_string(minutes) + ":";
 	if (seconds < 10)
 		asString += "0";
 	asString += to_string(seconds) + ":";
@@ -37,6 +37,8 @@ sf::String durationToString(uint32_t duration) {
 ChallengeHolder::ChallengeHolder(Connections& _conn) : conn(_conn), challengeCount(0) {
 	loadChallenges();
 	Net::takeSignal(18, &ChallengeHolder::sendReplay, this);
+
+	connectSignal("CheckChallengeResult", &ChallengeHolder::checkResult, this);
 }
 
 void ChallengeHolder::saveChallenges() {
@@ -46,7 +48,7 @@ void ChallengeHolder::saveChallenges() {
 	for (auto&& chall : challenges) {
 		if (!chall->update)
 			continue;
-		cout << "Saving challenge " << chall->name.toAnsiString() << endl;
+		cout << "Saving challenge " << chall->name << endl;
 		chall->sendScores(conn.serverkey);
 	}
 }
@@ -76,7 +78,7 @@ void ChallengeHolder::getChallengeScores() {
 	auto json = nlohmann::json::parse(response.getBody());
 
 	for (auto& challenge : challenges)
-		if (json.find(challenge->name.toAnsiString()) != json.end())
+		if (json.find(challenge->name) != json.end())
 			challenge->loadScores(json);
 }
 
@@ -137,7 +139,7 @@ void ChallengeHolder::checkResult(Client& client, sf::Packet& packet) {
 		}
 }
 
-void ChallengeHolder::sendReplayRequest(Client& client, sf::String text) {
+void ChallengeHolder::sendReplayRequest(Client& client, std::string text) {
 	sf::Packet packet;
 	packet << (uint8_t)6 << text;
 	client.sendPacket(packet);
@@ -145,7 +147,7 @@ void ChallengeHolder::sendReplayRequest(Client& client, sf::String text) {
 		client.room->waitForReplay=true;
 }
 
-void ChallengeHolder::sendNotGoodEnough(Client& client, sf::String text) {
+void ChallengeHolder::sendNotGoodEnough(Client& client, std::string text) {
 	sf::Packet packet;
 	packet << (uint8_t)7 << text;
 	client.sendPacket(packet);
@@ -232,17 +234,22 @@ void Challenge::loadScores(nlohmann::json& json) {
 	scores.sort([&](Score& s1, Score& s2){ return sort(s1, s2); });
 }
 
-void Challenge::sendScores(sf::String serverkey) {
+void Challenge::sendScores(std::string serverkey) {
 	for (auto & score : scores) {
 		if (!score.update)
 			continue;
 		JSONWrap jwrap;
-		sf::String fixedname = name;
-		fixedname.replace(" ", "_");
+		std::string fixedname = name;
+
+		for (auto& c : fixedname)
+			if (c == ' ')
+				c = '_';
+
 		jwrap.addPair("challenge_name", fixedname);
 		jwrap.addPair("id", score.id);
 		jwrap.addPair("key", serverkey);
 		jwrap.addPair("time", score.duration);
+
 		int i=0;
 		for (auto& column : columns) {
 			if (column.text == "Name" || column.text == "Time")

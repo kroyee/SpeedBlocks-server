@@ -10,6 +10,8 @@
 #include "DropDelay.h"
 #include "GameSignals.h"
 #include "StatsHolders.h"
+#include "Client.h"
+#include "PacketCompress.h"
 #include <SFML/Network.hpp>
 #include <vector>
 #include <deque>
@@ -22,7 +24,7 @@ class Resources;
 
 enum class Mode { Downstack, Stack };
 
-class AI {
+class AI : public Client {
 public:
 	std::array<double, 10> weights, downstackWeights, stackWeights;
 	TestField firstMove, secondMove;
@@ -31,16 +33,14 @@ public:
 	uint8_t piecerotation[7];
 	uint8_t colormap[7];
 
-	uint8_t nextpiece, nprot, npcol, offset, countdown, gameStateCount=0;
-	std::atomic<int> linesToBeSent;
+	uint8_t nextpiece, nprot, npcol, offset, countdown=0;
+	std::atomic<uint16_t> linesToBeSent;
 
 	sf::Vector2i well2Pos;
 
-	RoundStats data;
 	uint16_t gameCount;
 	uint16_t score;
 
-	uint16_t id;
 	float incomingLines;
 
 	Mode mode;
@@ -57,16 +57,15 @@ public:
 	ComboCounter combo;
 	DropDelay pieceDropDelay;
 
+	PacketCompress compressor;
+
 	sf::Clock& gameclock;
 
 	std::atomic<uint8_t> updateField;
 	std::mutex gamedataMutex;
-	std::atomic<bool> alive, adjustDownMove, movingPiece;
+	std::atomic<bool> adjustDownMove, movingPiece;
 
-	sf::Packet gameState;
-	std::atomic<bool> datavalid;
-
-	AI(sf::Clock& _gameclock);
+	AI(Room& room);
 
 	void startMove();
 	void continueMove();
@@ -81,13 +80,12 @@ public:
 	void setMode(Mode, bool vary=false);
 	void setSpeed(uint16_t speed);
 
-	bool playAI();
 	bool aiThreadRun();
 
-	void startRound();
+	void startGame();
 	void startCountdown();
-	void countDown(int count);
-	void endRound(const sf::Time& t, bool winner);
+	void countDown(const sf::Time&) override;
+	void endRound() override;
 
 	void delayCheck(const sf::Time& t);
 	void setComboTimer(const sf::Time& t);
@@ -98,7 +96,13 @@ public:
 	void setPieceColor(short i, uint8_t newcolor);
 	std::vector<short> pieceArray();
 
-	void updateGameData(int count=0);
+	void updateGameData();
+
+	void sendLines() override;
+	uint16_t sendLinesOut() override;
+	void sendGameData(sf::UdpSocket&) override;
+	void seed(uint16_t, uint16_t, uint8_t = 0) override;
+	void getRoundData(sf::Packet&) override;
 };
 
 #endif

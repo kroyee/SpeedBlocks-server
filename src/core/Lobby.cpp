@@ -134,7 +134,7 @@ void Lobby::sendRoomList(Client& client) {
 	client.sendPacket(packet);
 }
 
-void Lobby::addRoom(const sf::String& name, short max, uint16_t mode, uint8_t delay) {
+void Lobby::addRoom(const std::string& name, short max, uint16_t mode, uint8_t delay) {
 	if (mode == 1)
 		rooms.emplace_back(new FFARoom(conn));
 	else if (mode == 2)
@@ -151,7 +151,7 @@ void Lobby::addRoom(const sf::String& name, short max, uint16_t mode, uint8_t de
 	rooms.back()->id = idcount;
 	rooms.back()->maxPlayers = max;
 	rooms.back()->timeBetweenRounds = sf::seconds(delay);
-	cout << "Adding room " << rooms.back()->name.toAnsiString() << " as " << rooms.back()->id << endl;
+	cout << "Adding room " << rooms.back()->name << " as " << rooms.back()->id << endl;
 	idcount++;
 	roomCount++;
 	if (idcount>=10000)
@@ -191,7 +191,7 @@ void Lobby::addTempRoom(uint16_t mode, Node* game, Tournament* _tournament) {
 void Lobby::removeIdleRooms() {
 	for (auto it = rooms.begin(); it != rooms.end(); it++)
 		if ((*it)->currentPlayers == 0 && (*it)->start.getElapsedTime() > sf::seconds(60) && (*it)->id > 9 && !(*it)->spectators.size()) {
-			cout << "Removing room " << (*it)->name.toAnsiString() << " as " << (*it)->id << endl;
+			cout << "Removing room " << (*it)->name << " as " << (*it)->id << endl;
 			it = rooms.erase(it);
 			roomCount--;
 		}
@@ -204,7 +204,7 @@ void Lobby::removeIdleRooms() {
 		}
 }
 
-void Lobby::setMsg(const sf::String& msg) {
+void Lobby::setMsg(const std::string& msg) {
 	welcomeMsg = msg;
 }
 
@@ -217,7 +217,7 @@ void Lobby::sendTournamentList(Client& client) {
 	client.sendPacket(packet);
 }
 
-void Lobby::addTournament(const sf::String& name, uint16_t _mod_id) {
+void Lobby::addTournament(const std::string& name, uint16_t _mod_id) {
 	Tournament newTournament(conn);
 	newTournament.rounds = 11;
 	newTournament.sets = 1;
@@ -241,7 +241,7 @@ void Lobby::removeTournament(uint16_t id) {
 		}
 }
 
-void Lobby::signUpForTournament(Client& client, uint16_t id) {
+void Lobby::signUpForTournament(HumanClient& client, uint16_t id) {
 	if (client.guest) {
 		client.sendSignal(2);
 		return;
@@ -331,7 +331,7 @@ void Lobby::regularTournaments() {
 	if (daily == nullptr) {
 		time_t now = time(0);
 		struct tm* nowtm = gmtime(&now);
-		sf::String name;
+		std::string name;
 		switch (nowtm->tm_wday) {
 			case 0: name = "Sunday "; break;
 			case 1: name = "Monday "; break;
@@ -390,7 +390,7 @@ void Lobby::regularTournaments() {
 	if (monthly == nullptr) {
 		time_t now = time(0);
 		struct tm* nowtm = gmtime(&now);
-		sf::String name;
+		std::string name;
 		switch (nowtm->tm_mon) {
 			case 0: name = "January "; break;
 			case 1: name = "Febuary "; break;
@@ -474,8 +474,8 @@ void Lobby::saveTournaments() {
 		return;
 	}
 
-	file << daily->name.toAnsiString() << endl << weekly->name.toAnsiString() << endl;
-	file << monthly->name.toAnsiString() << endl << grandslam->name.toAnsiString() << endl;
+	file << daily->name << endl << weekly->name << endl;
+	file << monthly->name << endl << grandslam->name << endl;
 	daily->save();
 	weekly->save();
 	monthly->save();
@@ -528,7 +528,7 @@ void Lobby::loadTournaments() {
 
 		uint16_t mod, player_id;
 		uint8_t grade, rounds, sets;
-		sf::String name, player_name;
+		std::string name, player_name;
 		time_t startingTime;
 		getline(tfile, line); name = line;
 		getline(tfile, line); grade = stoi(line);

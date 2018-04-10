@@ -5,9 +5,9 @@
 #include <future>
 
 namespace AsyncTask {
-	
+
 	namespace detail {
-		extern std::deque<std::future<int>> futureQueue;
+		extern std::deque<std::future<void>> futureQueue;
 	}
 
 	template <typename F>
@@ -20,8 +20,6 @@ namespace AsyncTask {
 		detail::futureQueue.emplace_back( std::async(std::launch::async, [func, repeat]() mutable {
 			while (repeat && func())
 				--repeat;
-
-			return 0;
 		}) );
 	}
 
@@ -29,7 +27,6 @@ namespace AsyncTask {
 	void addAndReact(F1 func1, F2 func2) {
 		detail::futureQueue.emplace_back( std::async(std::launch::async, [func1, func2](){
 			func2(func1());
-			return 0;
 		}) );
 	}
 

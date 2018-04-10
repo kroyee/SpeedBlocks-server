@@ -4,7 +4,7 @@
 namespace AsyncTask {
 
 	namespace detail {
-		std::deque<std::future<int>> futureQueue;
+		std::deque<std::future<void>> futureQueue;
 	}
 
 	bool empty() { return detail::futureQueue.empty(); }

@@ -12,16 +12,16 @@ class Client;
 class Replay;
 
 struct Column {
-	Column(uint16_t _width, sf::String _text) : width(_width), text(_text) {}
+	Column(uint16_t _width, std::string _text) : width(_width), text(_text) {}
 	uint16_t width;
-	sf::String text;
+	std::string text;
 };
 
 struct Score {
 	uint16_t id;
-	sf::String name;
+	std::string name;
 
-	std::vector<sf::String> column;
+	std::vector<std::string> column;
 	uint32_t duration;
 
 	Replay replay;
@@ -31,9 +31,9 @@ struct Score {
 
 class Challenge {
 public:
-	sf::String name;
+	std::string name;
 	uint16_t id;
-	sf::String label;
+	std::string label;
 
 	std::vector<Column> columns;
 	std::list<Score> scores;
@@ -46,7 +46,7 @@ public:
 	virtual bool sort(Score&, Score&);
 	virtual bool checkResult(Client& client, uint32_t duration, uint16_t blocks, Score& score) = 0;
 	void loadScores(nlohmann::json& json);
-	void sendScores(sf::String serverkey);
+	void sendScores(std::string serverkey);
 };
 
 class ChallengeHolder {
@@ -74,8 +74,8 @@ public:
 	void sendLeaderboard(uint16_t id);
 
 	void checkResult(Client&, sf::Packet&);
-	void sendReplayRequest(Client& client, sf::String text);
-	void sendNotGoodEnough(Client& client, sf::String text);
+	void sendReplayRequest(Client& client, std::string text);
+	void sendNotGoodEnough(Client& client, std::string text);
 	void updateResult(Client& client, uint16_t id, sf::Packet& packet);
 
 	void sendReplay(uint16_t id, uint16_t slot);

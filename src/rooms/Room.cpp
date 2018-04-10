@@ -12,10 +12,7 @@ round(false),
 waitForReplay(false),
 locked(false),
 gamemode(_gamemode),
-tournamentGame(nullptr),
-aiManager(start, botSendLines) {
-	botSendLines.connect(&Room::sendLines, this);
-}
+tournamentGame(nullptr) {}
 
 void Room::startGame() {
 	round=true;
@@ -25,17 +22,9 @@ void Room::startGame() {
 	endround=false;
 	countdown=false;
 	start.restart();
-	for (auto&& client : clients) {
-		client->datavalid=false;
-		client->datacount=250;
-		client->roundStats.clear();
-		client->history.clear();
-		if (!client->away) {
-			incrementGamesPlayed(*client);
-			client->alive=true;
-		}
-	}
-	aiManager.startRound();
+
+	for (auto&& client : clients)
+		client->startGame();
 }
 
 void Room::startCountdown() {
@@ -45,27 +34,28 @@ void Room::startCountdown() {
 	start.restart();
 	seed1 = rand();
 	seed2 = rand();
-	sendSignalToActive(4, seed1, seed2);
-	sendSignalToAway(10, seed1, seed2);
-	sendSignalToSpectators(10, seed1, seed2);
-	aiManager.startCountdown(seed1, seed2);
+	for (auto& client : clients)
+		client->seed(seed1, seed2);
+
+	for (auto& client : spectators)
+		client->seed(seed1, seed2, 10);
 }
 
 void Room::transfearScore() {
 	for (auto&& leaver : leavers) {
 		for (auto&& client : conn.clients)
-			if (leaver.id == client.id) {
-				client.stats.ffaPoints += leaver.stats.ffaPoints;
-				client.stats.updateFFARank();
-				client.stats.vsPoints = leaver.stats.vsPoints;
-				client.stats.heroPoints = leaver.stats.heroPoints;
+			if (leaver.id == client->id) {
+				client->stats.ffaPoints += leaver.stats.ffaPoints;
+				client->stats.updateFFARank();
+				client->stats.vsPoints = leaver.stats.vsPoints;
+				client->stats.heroPoints = leaver.stats.heroPoints;
 			}
 		for (auto&& client : conn.uploadData)
-			if (leaver.id == client.id) {
-				client.stats.ffaPoints += leaver.stats.ffaPoints;
-				client.stats.updateFFARank();
-				client.stats.vsPoints = leaver.stats.vsPoints;
-				client.stats.heroPoints = leaver.stats.heroPoints;
+			if (leaver.id == client->id) {
+				client->stats.ffaPoints += leaver.stats.ffaPoints;
+				client->stats.updateFFARank();
+				client->stats.vsPoints = leaver.stats.vsPoints;
+				client->stats.heroPoints = leaver.stats.heroPoints;
 			}
 	}
 	leavers.clear();
@@ -78,8 +68,9 @@ void Room::endRound() {
 	round=false;
 	countdown=false;
 	roundLenght = start.restart();
-	sendSignal(7);
-	aiManager.endRound(roundLenght);
+
+	for (auto& client : clients)
+		client->endRound();
 }
 
 void Room::join(Client& jClient) {
@@ -92,9 +83,9 @@ void Room::join(Client& jClient) {
 		}
 		currentPlayers++;
 		activePlayers++;
-		if (activePlayers > 1 || gamemode >= 20000)
-			setActive();
 		clients.push_back(&jClient);
+		if ((activePlayers > 1 && !onlyBots()) || gamemode >= 20000)
+			setActive();
 		jClient.room = this;
 		jClient.alive=false;
 		jClient.datavalid=false;
@@ -119,11 +110,14 @@ void Room::leave(Client& lClient) {
 				playerDied(lClient);
 			}
 			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
-				leavers.push_back(lClient);
+				leavers.emplace_back();
+				leavers.back().roundStats = lClient.roundStats;
+				leavers.back().stats = lClient.stats;
+				leavers.back().id = lClient.id;
 				leavers.back().stats.ffaPoints=0;
 			}
 			it = clients.erase(it);
-			if (activePlayers < 2)
+			if (activePlayers < 2 || onlyBots())
 				setInactive();
 			lClient.roundStats.incLines = 0;
 			lClient.room = nullptr;
@@ -158,7 +152,7 @@ void Room::matchLeaver(Client& lClient) {
 	}
 }
 
-bool Room::addSpectator(Client& client) {
+bool Room::addSpectator(HumanClient& client) {
 	if (client.room || client.spectating == this)
 		return false;
 	if (client.spectating)
@@ -175,16 +169,6 @@ void Room::removeSpectator(Client& client) {
 			client.spectating = nullptr;
 			return;
 		}
-}
-
-void Room::setBots(uint8_t count) {
-	auto currentAmount = aiManager.count();
-	if (count == currentAmount)
-		return;
-	aiManager.setAmount(count);
-	currentPlayers += count - currentAmount;
-	activePlayers += count - currentAmount;
-	botCount += count - currentAmount;
 }
 
 void Room::sendNewPlayerInfo(Client& client) {
@@ -233,7 +217,7 @@ void Room::score1vs1Round() {
 	for (auto client : clients)
 		if (client->roundStats.position == 2)
 			loser = client;
-	for (auto client : leavers)
+	for (auto& client : leavers)
 		if (client.roundStats.position == 2)
 			loser = &client;
 
@@ -258,7 +242,7 @@ void Room::score1vs1Round() {
 	else
 		packet << (uint8_t)0;
 	packet << (uint8_t)0 << (uint8_t)winner->roundStats.score << (uint8_t)loser->roundStats.score;
-	
+
 	sendPacket(packet);
 
 	timeBetweenRounds = sf::seconds(3);
@@ -297,19 +281,13 @@ void Room::lock() {
 	locked=true;
 }
 
-void Room::sendGameData() {
-	for (auto&& fromClient : clients) {
-		if (fromClient->datavalid) {
-			for (auto&& toClient : clients)
-				if (fromClient->id != toClient->id)
-					conn.send(*fromClient, *toClient);
-			for (auto&& toSpectator : spectators)
-				conn.send(*fromClient, *toSpectator);
-			fromClient->datavalid=false;
-		}
-	}
+void Room::sendGameData(sf::UdpSocket& udp) {
+	for (auto&& client : clients) {
+		if (client->datavalid)
+			client->sendGameData(udp);
 
-	aiManager.sendGameData(*this);
+		sendLines(*client, client->sendLinesOut());
+	}
 }
 
 void Room::makeCountdown() {
@@ -327,11 +305,7 @@ void Room::makeCountdown() {
 				countdownTime+=sf::milliseconds(200);
 				for (auto& client : clients) {
 					if (!client->away) {
-						uint16_t compensate = std::min(client->ping.getAverage()/2, client->ping.getLowest());
-						compensate=3000-t.asMilliseconds()-compensate;
-						sf::Packet packet;
-						packet << (uint8_t)103 << compensate;
-						conn.sendUDP(*client, packet);
+						client->countDown(t);
 					}
 				}
 			}
@@ -370,26 +344,26 @@ void Room::checkIfRoundEnded() {
 	}
 }
 
-void Room::sendLines(uint16_t id, RoundStats& stats, uint16_t amount) {
-	if (playersAlive == 1)
+void Room::sendLines(Client& client, uint16_t amount) {
+	if (playersAlive == 1 || !amount)
 		return;
 
-	float lineAdjust = lineSendAdjust.getAdjust(stats.linesSent, amount);
+	float lineAdjust = lineSendAdjust.getAdjust(client.roundStats.linesSent, amount);
 
-	stats.linesSent+=amount;
-	stats.linesAdjusted+=lineAdjust;
+	client.roundStats.linesSent+=amount;
+	client.roundStats.linesAdjusted+=lineAdjust;
 	float actualSend=amount-lineAdjust;
 	actualSend /= playersAlive-1;
 
-	distributeLines(id, actualSend);
+	distributeLines(client.id, actualSend);
 }
 
 void Room::distributeLines(uint16_t senderid, float amount) {
 	for (auto& client : clients)
-		if (client->id != senderid && client->alive)
+		if (client->id != senderid && client->alive) {
 			client->roundStats.incLines+=amount;
-
-	aiManager.sendLines(senderid, amount);
+			client->sendLines();
+		}
 }
 
 void Room::sendSignal(uint8_t signalId, int id1, int id2) {
@@ -400,8 +374,7 @@ void Room::sendSignal(uint8_t signalId, int id1, int id2) {
 	if (id2 > -1)
 		packet << (uint16_t)id2;
 	for (auto&& client : clients)
-		if (client->socket->send(packet) != sf::Socket::Done)
-			std::cout << "Error sending Signal packet to room " << id << std::endl;
+		client->sendPacket(packet);
 }
 
 void Room::sendSignalToAway(uint8_t signalId, int id1, int id2) {
@@ -413,8 +386,7 @@ void Room::sendSignalToAway(uint8_t signalId, int id1, int id2) {
 		packet << (uint16_t)id2;
 	for (auto&& client : clients)
 		if (client->away)
-			if (client->socket->send(packet) != sf::Socket::Done)
-				std::cout << "Error sending Signal packet to room " << id << std::endl;
+			client->sendPacket(packet);
 }
 
 void Room::sendSignalToActive(uint8_t signalId, int id1, int id2) {
@@ -426,8 +398,7 @@ void Room::sendSignalToActive(uint8_t signalId, int id1, int id2) {
 		packet << (uint16_t)id2;
 	for (auto&& client : clients)
 		if (!client->away)
-			if (client->socket->send(packet) != sf::Socket::Done)
-				std::cout << "Error sending Signal packet to room " << id << std::endl;
+			client->sendPacket(packet);
 }
 
 
@@ -439,8 +410,7 @@ void Room::sendSignalToSpectators(uint8_t signalId, int id1, int id2) {
 	if (id2 > -1)
 		packet << (uint16_t)id2;
 	for (auto&& spectator : spectators)
-		if (spectator->socket->send(packet) != sf::Socket::Done)
-			std::cout << "Error sending Signal packet to spectator in room " << id << std::endl;
+		spectator->sendPacket(packet);
 }
 
 void Room::sendPacket(sf::Packet& packet) {
@@ -450,14 +420,20 @@ void Room::sendPacket(sf::Packet& packet) {
 
 void Room::sendPacketToPlayers(sf::Packet& packet) {
 	for (auto& client : clients)
-		if (client->socket->send(packet) != sf::Socket::Done)
-			std::cout << "Error sending packet to player in room " << id << std::endl;
+		client->sendPacket(packet);
 }
 
 void Room::sendPacketToSpectators(sf::Packet& packet) {
 	for (auto& spectator : spectators)
-		if (spectator->socket->send(packet) != sf::Socket::Done)
-			std::cout << "Error sending packet to spectator in room " << id << std::endl;
+		spectator->sendPacket(packet);
+}
+
+bool Room::onlyBots() {
+	for (auto& client : clients)
+		if (client->isHuman())
+			return false;
+
+	return spectators.empty();
 }
 
 //////////////////////////////////////////////
@@ -517,16 +493,16 @@ void HeroRoom::scoreRound() {
 			for (auto loser : clients)
 				if (loser->roundStats.position && winner->roundStats.position < loser->roundStats.position)
 					eloResults.addResult(*winner, *loser, 2);
-			for (auto loser : leavers)
+			for (auto& loser : leavers)
 				if (loser.roundStats.position && winner->roundStats.position < loser.roundStats.position)
 					eloResults.addResult(*winner, loser, 2);
 		}
-	for (auto winner : leavers)
+	for (auto& winner : leavers)
 		if (winner.roundStats.position) {
 			for (auto loser : clients)
 				if (loser->roundStats.position && winner.roundStats.position < loser->roundStats.position)
 					eloResults.addResult(winner, *loser, 2);
-			for (auto loser : leavers)
+			for (auto& loser : leavers)
 				if (loser.roundStats.position && winner.roundStats.position < loser.roundStats.position)
 					eloResults.addResult(winner, loser, 2);
 		}

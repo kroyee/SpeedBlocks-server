@@ -6,8 +6,8 @@
 #include <mutex>
 
 namespace TaskQueue {
-	void pushTask(uint8_t queue_nr, std::function<void()> func);
-	void performTasks(uint8_t queue_nr);
+	void push(uint8_t queue_nr, std::function<void()> func);
+	void perform(uint8_t queue_nr);
 }
 
 #endif

@@ -33,27 +33,10 @@ void TestField::removePiece() {
 }
 
 void TestField::setPiece(int _piece) {
-	/*cout << "Setting piece" << endl;
-	piece.piece = ai.basepiece[_piece].piece;
-	piece.tile = ai.basepiece[_piece].tile;
-	piece.rotation = ai.basepiece[_piece].rotation;
-
-	for (int x=0; x<4; x++)
-        for (int y=0; y<4; y++) {
-            if (ai.basepiece[piece.piece].grid[y][x]) {
-            	cout << "Setting tile" << endl;
-                piece.grid[y][x] = piece.tile;
-            }
-            else
-                piece.grid[y][x] = 0;
-        }
-    piece.lpiece = ai.basepiece[piece.piece].lpiece;*/
-
     piece = ai.basepiece[_piece];
 
     piece.posX = 3;
-	piece.posY = 0;
-    piece.current_rotation = 0;
+	  piece.posY = 0;
 }
 
 void TestField::checkForHoles(int y, int x) {
@@ -612,13 +595,13 @@ bool TestField::doWallKick() {
 		test_path.push_back(240+turnVal);
 		if (tryLeft())
 			return restorePiece(pieceBackup, true);
-		
+
 		piece = pieceBackup2;
 		if (test_path.size() > 1) {
 			test_path.clear();
 			test_path.push_back(240+turnVal);
 		}
-		
+
 		return restorePiece(pieceBackup, tryRight());
 	}
 

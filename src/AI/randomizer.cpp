@@ -54,6 +54,10 @@ void randomizer::seedHole(short seedNr) {
 	hole_gen.seed(seedNr);
 }
 
+float randomizer::get() {
+	return piece_dist(AI_gen);
+}
+
 void randomizer::reset() {
 	for (int i=0; i<7; i++) {
 		noP[i]=0;

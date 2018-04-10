@@ -2,85 +2,59 @@
 #include "Room.h"
 #include <iostream>
 
-AIManager::AIManager(sf::Clock& _gameclock, Signal<void, uint16_t, RoundStats&, uint16_t>& _sendLines) :
-gameclock(_gameclock),
-botSendLines(_sendLines) {}
+static std::vector<std::string> names = {
+	"superBot",
+	"r2speed2",
+	"noeltron",
+	"explBoT",
+	"A20",
+	"MooseMasher",
+	"YLYL",
+	"emc2",
+	"Speed",
+	"Blocks"
+};
 
-void AIManager::setAmount(unsigned int amount) {
-	//std::lock_guard<std::mutex> mute(listMutex);
-	while (amount > bots.size())
-		bots.emplace_back(gameclock);
+void AIManager::add(Room& room) {
+	static uint16_t idcount = 59000;
+	bots.emplace_back(room);
+	bots.back().id = idcount++;
+	bots.back().setSpeed(100);
+	bots.back().name = names[bots.back().rander.get() * names.size()];
 
-	while (amount < bots.size())
-		bots.pop_back();
+	if (idcount > 59999)
+		idcount = 59000;
+
+	room.join(bots.back());
+
+	terminateThread=false;
+	if (!aiThread.joinable())
+		aiThread = std::thread(&AIManager::threadRun, this);
+}
+
+void AIManager::clear() {
+	terminateThread=true;
+	for (auto& bot : bots)
+		bot.room->leave(bot);
+	bots.clear();
+	if (aiThread.joinable())
+		aiThread.join();
 }
 
 void AIManager::threadRun() {
 	while (!terminateThread) {
 		for (auto& bot : bots)
 			if (bot.alive)
-				if (bot.aiThreadRun()) {
-					compressor.compress(bot);
-					bot.gameState.clear();
-					bot.gameState << (uint8_t)100 << bot.id << bot.gameStateCount++;
-					compressor.dumpTmp(bot.gameState);
-					bot.datavalid = true;
-				}
+				if (bot.aiThreadRun())
+					bot.updateGameData();
 		sf::sleep(sf::seconds(0));
 	}
 }
 
-void AIManager::sendLines(uint16_t senderid, float amount) {
-	//std::lock_guard<std::mutex>> mute(listMutex);
+std::vector<std::pair<uint16_t, std::string>> AIManager::getBots() {
+	std::vector<std::pair<uint16_t, std::string>> bot_list;
 	for (auto& bot : bots)
-		if (bot.id != senderid)
-			bot.addGarbage(amount, gameclock.getElapsedTime());
-}
+		bot_list.push_back({bot.id, bot.name});
 
-static auto& SeedRander = Signal<void, uint16_t, uint16_t>::get("SeedRander");
-void AIManager::startCountdown(uint16_t seed1, uint16_t seed2) {
-	SeedRander(seed1, seed2);
-	for (auto& bot : bots)
-		bot.startCountdown();
-}
-
-void AIManager::countDown(int count) {
-	for (auto& bot : bots)
-		bot.countDown(count);
-}
-
-void AIManager::startRound() {
-	for (auto& bot : bots)
-		bot.startRound();
-
-	alive = bots.size();
-	terminateThread = false;
-	if (alive)
-		aiThread = std::thread(&AIManager::threadRun, this);
-}
-
-void AIManager::endRound(const sf::Time& t) {
-	for (auto& bot : bots)
-		if (bot.alive)
-			bot.endRound(t, true);
-	terminateThread = true;
-	if (aiThread.joinable())
-		aiThread.join();
-}
-
-AI* AIManager::getBot(uint16_t id) {
-	for (auto& bot : bots)
-		if (bot.id == id)
-			return &bot;
-	return nullptr;
-}
-
-void AIManager::sendGameData(Room& room) {
-	for (auto& bot : bots) {
-		if (bot.datavalid) {
-			room.sendPacket(bot.gameState);
-			bot.datavalid = false;
-			std::cout << "Sending gamestate from bot" << std::endl;
-		}
-	}
+	return bot_list;
 }
