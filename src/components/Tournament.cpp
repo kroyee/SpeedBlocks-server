@@ -371,41 +371,8 @@ void Tournament::linkGames(Node& game1, Node& game2) {
 
 void Tournament::putPlayersInBracket() {
 	int amountinrow = 1*pow(2, bracket.depth-1);
-	/*int start = bracket.games.size()-amountinrow;
-	int step = amountinrow/2.0;
-	unsigned int index = start;
-	bool slot1=true;
-	for (auto&& player : participants) {
-		if (slot1)
-			while (bracket.games[index].player1 != nullptr) {
-				index+=step;
-				if (index >= bracket.games.size()) {
-					if (step < 2) {
-						index=start;
-						step=amountinrow/2.0;
-						slot1=false;
-						break;
-					}
-					step/=2;
-					index=start;
-				}
-			}
-		if (slot1)
-			bracket.games[index].player1 = &player;
-		if (!slot1)
-			while (bracket.games[index].player2 != nullptr) {
-				index+=step;
-				if (index >= bracket.games.size()) {
-					if (step < 2)
-						break;
-					step/=2;
-					index=start;
-				}
-			}
-		if (!slot1)
-			bracket.games[index].player2 = &player;
-	}*/
 	int counter=0;
+	
 	std::random_shuffle(participants.begin(), participants.end());
 	for (auto&& player : participants) {
 		int z=1, x=counter;
