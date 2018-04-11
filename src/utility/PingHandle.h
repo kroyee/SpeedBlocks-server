@@ -4,7 +4,7 @@
 #include <SFML/Network.hpp>
 #include <deque>
 
-class Client;
+class HumanClient;
 
 class PingHandle {
 private:
@@ -20,7 +20,7 @@ private:
 	sf::Time lastSend=sf::seconds(0);
 
 public:
-	void get(const sf::Time& t, Client& client, sf::Packet& packet);
+	void get(const sf::Time& t, HumanClient& client, sf::Packet& packet);
 	int getAverage();
 	float getPacketLoss(const sf::Time& t);
 	int getLowest();

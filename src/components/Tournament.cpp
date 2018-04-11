@@ -119,7 +119,7 @@ void Node::decideGame() {
 			tournament.thread = new std::thread(&Tournament::scoreTournament, &tournament);
 		return;
 	}
-	
+
 	if (result.p1_sets > result.p2_sets) {
 		if (nextgame->p1game->id == id)
 			nextgame->player1 = player1;
@@ -132,7 +132,7 @@ void Node::decideGame() {
 		else
 			nextgame->player2 = player2;
 	}
-	
+
 	if (nextgame->player1 != nullptr && nextgame->player2 != nullptr) {
 		nextgame->status = 2;
 		nextgame->sendResults();
@@ -613,7 +613,7 @@ void Tournament::checkIfStart() {
 				if (time(NULL) > startingTime-1200) {
 					notify=true;
 					JSONWrap jwrap;
-					sf::String cont = "<@&384787999675645963> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
+					std::string cont = "<@&384787999675645963> Tournament Notification%" + name + " is starting in 20 minutes%Participants: ";
 					for (auto& player : participants)
 						cont += player.name + " ";
 					jwrap.addPair("content", cont);

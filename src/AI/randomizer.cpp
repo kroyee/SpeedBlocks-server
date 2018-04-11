@@ -2,7 +2,7 @@
 #include "GameSignals.h"
 
 randomizer::randomizer() {
-	Signals::SeedRander.connect([&](uint16_t piece, uint16_t hole){
+	connectSignal("SeedRander", [&](uint16_t piece, uint16_t hole){
 		seedPiece(piece);
 		seedHole(hole);
 		reset();
@@ -52,6 +52,10 @@ short randomizer::getHole(bool noStack) {
 
 void randomizer::seedHole(short seedNr) {
 	hole_gen.seed(seedNr);
+}
+
+float randomizer::get() {
+	return piece_dist(AI_gen);
 }
 
 void randomizer::reset() {

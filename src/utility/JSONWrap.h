@@ -8,19 +8,19 @@ class Client;
 class StatsHolder;
 
 struct Pair {
-	sf::String key, value;
+	std::string key, value;
 };
 
 class JSONWrap {
 public:
 	std::list<Pair> pairs;
 
-	void addPair(const sf::String& key, const sf::String& value, bool wrapinquotes=true);
-	void addPair(const sf::String& key, int64_t value);
+	void addPair(const std::string& key, const std::string& value, bool wrapinquotes=true);
+	void addPair(const std::string& key, int64_t value);
 	void addStatsTable(Client& client, const std::string& table_name);
 	std::string getJsonString();
 	void jsonToClientStats(StatsHolder& stats, std::string jsonString);
-	sf::Http::Response sendPost(const sf::String& _request, const sf::String& _url="http://localhost", const sf::String& contenttype="application/x-www-form-urlencoded");
+	sf::Http::Response sendPost(const std::string& _request, const std::string& _url="http://localhost", const std::string& contenttype="application/x-www-form-urlencoded");
 	void clear();
 };
 

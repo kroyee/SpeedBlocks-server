@@ -5,6 +5,7 @@
 #include <thread>
 #include <list>
 #include <iostream>
+#include <atomic>
 #include "ClientHistory.h"
 #include "PingHandle.h"
 #include "StatsHolders.h"
@@ -16,55 +17,84 @@ class JSONWrap;
 
 class Client {
 public:
-	Client(Connections* _conn);
-	sf::IpAddress address;
-	sf::TcpSocket *socket;
 	uint16_t id;
 	uint8_t datacount;
-	sf::Packet data;
-	uint16_t udpPort;
-	Room* room, *spectating;
-	Connections* conn;
+	sf::Packet data; // Holds current gamestate
 
-	sf::String name;
-	uint8_t authresult;
+	Room *room = nullptr, *spectating = nullptr;
 
-	bool alive, datavalid, sdataSet, guest, sdataSetFailed, sdataPutFailed, sdataInit, sdataPut, away, ready;
-	bool matchmaking;
+	std::string name;
 
-	std::thread *thread;
+	std::atomic<bool> alive{false}, datavalid{false};
+	bool sdataSet=false, guest=false, sdataSetFailed=false;
+	bool matchmaking=false, sdataPutFailed=false, sdataInit=false, sdataPut=false, away=false, ready=false;
 
 	RoundStats roundStats;
 
-	sf::Time uploadTime, updateStatsTime;
-	sf::Time lastHeardFrom;
-
-	PingHandle ping;
 	StatsHolder stats;
 
 	PlayfieldHistory history;
 
-	Tournament* tournament;
+	Tournament* tournament = nullptr;
 
 	void sendData();
 	bool sendDataPart(JSONWrap& jwrap);
 	void getData();
-	int getDataInt(short, short, std::string&);
-	float getDataFloat(short, short, std::string&);
-	void authUser();
 	void checkIfStatsSet();
-	void checkIfAuth();
-	void sendLines();
 	void goAway();
 	void unAway();
 
-	void getRoundData(sf::Packet& packet);
+	virtual void getRoundData(sf::Packet& packet);
 	void getWinnerData(sf::Packet& packet);
+	void makeWinner();
+	void sendPositionBpm();
 
-	void sendPacket(sf::Packet&);
-	void sendSignal(uint8_t signalId, int id1 = -1, int id2 = -1);
 	void sendJoinRoomResponse(Room& room, uint16_t joinok);
-	void sendAlert(const sf::String& msg);
+	void sendAlert(const std::string& msg);
+
+	virtual bool initHuman(sf::TcpListener&, sf::SocketSelector&, const sf::Time&) { return false; }
+	virtual void disconnect() {}
+
+	virtual void sendPacket(sf::Packet&) {}
+	virtual void sendSignal(uint8_t, int = -1, int = -1) {}
+	virtual void sendGameData(sf::UdpSocket&) {}
+	virtual void sendGameDataOut(sf::UdpSocket&, sf::Packet&) {}
+	virtual void countDown(const sf::Time&) {}
+	virtual void sendLines();
+	virtual uint16_t sendLinesOut() { return 0; }
+	virtual void seed(uint16_t, uint16_t, uint8_t = 0) {}
+	virtual void endRound() {}
+	virtual void startGame() {}
+	virtual bool isHuman() { return false; }
+	virtual void updateSpeed() {}
+
+	virtual ~Client() = default;
+};
+
+class HumanClient : public Client {
+public:
+	sf::IpAddress address;
+	sf::TcpSocket socket;
+	uint16_t udpPort;
+	uint8_t authresult = 0;
+	sf::Time uploadTime, updateStatsTime{sf::seconds(0)};
+	sf::Time lastHeardFrom;
+	PingHandle ping;
+
+	void authUser();
+	void checkIfAuth();
+	void sendPacket(sf::Packet&) override;
+	void sendSignal(uint8_t signalId, int id1 = -1, int id2 = -1) override;
+	void sendGameData(sf::UdpSocket&) override;
+	void sendGameDataOut(sf::UdpSocket&, sf::Packet&) override;
+	void countDown(const sf::Time& t) override;
+	void seed(uint16_t, uint16_t, uint8_t = 0) override;
+	void endRound() override;
+	void startGame() override;
+
+	bool initHuman(sf::TcpListener&, sf::SocketSelector&, const sf::Time&) override;
+	void disconnect() override { socket.disconnect(); }
+	bool isHuman() override { return true; }
 };
 
 #endif

@@ -17,15 +17,16 @@ public:
 	Room(Connections& _conn, uint16_t _gamemode);
 	virtual ~Room() = default;
 	Connections& conn;
-	sf::String name;
+	std::string name;
 	uint16_t id;
 
 	uint8_t maxPlayers;
-	uint8_t currentPlayers;
-	uint8_t activePlayers;
+	uint8_t currentPlayers = 0;
+	uint8_t botCount = 0;
+	uint8_t activePlayers = 0;
 
 	std::list<Client*> clients;
-	std::list<Client*> spectators;
+	std::list<HumanClient*> spectators;
 
 	std::list<Client> leavers;
 
@@ -45,16 +46,13 @@ public:
 
 	sf::Time countdownTime;
 
-	AIManager aiManager;
 	LineSendAdjust lineSendAdjust;
-
-	Signal<void, uint16_t, RoundStats&, uint16_t> botSendLines;
 
 	void join(Client&);
 	void leave(Client&);
 	void matchLeaver(Client&);
 
-	bool addSpectator(Client&);
+	bool addSpectator(HumanClient&);
 	void removeSpectator(Client&);
 
 	void startGame();
@@ -68,12 +66,12 @@ public:
 	void setInactive();
 	void setActive();
 	void lock();
-	void sendGameData();
+	void sendGameData(sf::UdpSocket&);
 	void makeCountdown();
 	void checkIfRoundEnded();
 	void startCountdown();
 
-	void sendLines(uint16_t id, RoundStats& stats, uint16_t amount);
+	void sendLines(Client& client, uint16_t amount);
 	void distributeLines(uint16_t senderid, float amount);
 	void sendNewPlayerInfo(Client& client);
 	void sendRoundScores();
@@ -86,6 +84,8 @@ public:
 	void sendPacket(sf::Packet& packet);
 	void sendPacketToPlayers(sf::Packet& packet);
 	void sendPacketToSpectators(sf::Packet& packet);
+
+	bool onlyBots();
 
 	virtual void scoreRound() {}
 	virtual void incrementGamesPlayed(Client&) = 0;

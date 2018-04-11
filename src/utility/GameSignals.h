@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <unordered_map>
 
 template<typename... T>
 class Signal;
@@ -33,6 +34,15 @@ public:
 	void disconnect() {
 		function.clear();
 	}
+
+	static Signal& get(std::string signal_name) {
+		static std::unordered_map<std::string, Signal> signal_map;
+		
+		if (signal_map.find(signal_name) == signal_map.end())
+			signal_map[signal_name] = Signal();
+
+		return signal_map[signal_name];
+	}
 };
 
 template<typename ReturnType, typename... Args>
@@ -54,6 +64,15 @@ public:
 		function = [instance, func](Args&&... args) -> ReturnType {
 			return (instance->*func)(std::forward<Args>(args)...);
 		};
+	}
+
+	static Signal& get(std::string signal_name) {
+		static std::unordered_map<std::string, Signal> signal_map;
+		
+		if (signal_map.find(signal_name) == signal_map.end())
+			signal_map[signal_name] = Signal();
+
+		return signal_map[signal_name];
 	}
 };
 
@@ -84,45 +103,34 @@ struct GameplayData {
 	}
 };
 
-struct Signals {
-									//Game
-	static Signal<void, int>				GameAddDelay;
-									//Network
-	static Signal<void, int, int, int>		SendSignal;
-	static Signal<void, sf::Packet&>		SendPacket;
-	static Signal<void, sf::Packet&>		SendPacketUDP;
-	static Signal<void, int, int>			SendPing;
-									//AI
-	static Signal<void, int, int>			DistributeLinesLocally;
-	static Signal<void, uint8_t>			AmountAI;
-	static Signal<void, uint16_t>			SpeedAI;
-	static Signal<void, uint16_t, uint16_t> SeedRander;
+void SendSignal(int x, int y=-1, int z=-1);
 
-	static void SendSig(int x, int y=-1, int z=-1) {
-		SendSignal(x,y,z);
-	}
+// Signal connection functions
+
+template<typename T>
+struct SignalSignature {};
+
+template<typename ReturnType, typename Class, typename... Args>
+struct SignalSignature<ReturnType(Class::*)(Args...)> {
+	using Type = Signal<ReturnType, Args...>;
 };
 
-/* GUI Elements (Hide/Show ect)				Sounds (PlaySound)
--------------------------------------------------------
-0	mainMenu							0	pieceDrop
-1	loginBox							1	lineClear
-2	gameOptions							2	garbAdd
-3	connectingScreen					3	lineBlock
-4	onlineplayUI						4	menuSel
-5	areYouSure							5	menuBack
-6	performanceOutput					6	combo5
-7	bugReport							7	combo8
-8	challengesGameUI					8	combo11
-9	replayUI							9	combo13
-10	gameStandings						10	combo15
-11	chatScreen							11	combo17
-12	slideMenu							12	combo19
-13	scoreScreen							13	combo21
-14	serverUI							14	startBeep1
-15	alertsUI							15	startBeep2
-										16	alert
-*/
+template<typename ReturnType, typename Class, typename... Args>
+struct SignalSignature<ReturnType(Class::*)(Args...) const> {
+	using Type = Signal<ReturnType, Args...>;
+};
+
+template<typename Func>
+void connectSignal(std::string signal_name, Func func) {
+	using Type = typename SignalSignature<decltype(&Func::operator())>::Type;
+	Type::get(signal_name).connect(std::forward<Func&&>(func));
+}
+
+template<typename Func, typename Instance>
+void connectSignal(std::string signal_name, Func func, Instance instance) {
+	using Type = typename SignalSignature<Func>::Type;
+	Type::get(signal_name).connect(std::forward<Func&&>(func), std::forward<Instance&&>(instance));
+}
 
 // -------------- Packet delegation
 

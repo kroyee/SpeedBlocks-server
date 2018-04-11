@@ -4,11 +4,12 @@
 #include "Tournament.h"
 #include "GameSignals.h"
 #include "JSONWrap.h"
+#include "AsyncTask.h"
 using std::cout;
 using std::endl;
 
 Connections::Connections() : tcpPort(21512), sender(nullptr),
-	clientVersion(113), clientCount(0), lobby(*this) {
+	clientVersion(114), clientCount(0), lobby(*this) {
 	udpSock.bind(21514); selector.add(udpSock);
 
 	Net::takePacket(2, &Connections::validateClient, this);
@@ -16,7 +17,7 @@ Connections::Connections() : tcpPort(21512), sender(nullptr),
 	Net::takePacket(4, [&](sf::Packet& packet){ sender->getWinnerData(packet); });
 	Net::takePacket(10, &Connections::sendChatMsg, this);
 	Net::takePacket(11, [&](sf::Packet& packet){
-		sf::String name;
+		std::string name;
 		uint8_t max;
 		packet >> name >> max;
 		lobby.addRoom(name, max, 3, 3);
@@ -28,7 +29,7 @@ Connections::Connections() : tcpPort(21512), sender(nullptr),
 	Net::takeSignal(1, [&](){ if (sender->room != nullptr) sender->room->leave(*sender); });
 	Net::takeSignal(2, [&](uint16_t amount){
 		if (sender->room != nullptr)
-			sender->room->sendLines(sender->id, sender->roundStats, amount);
+			sender->room->sendLines(*sender, amount);
 	});
 	Net::takeSignal(3, [&](uint8_t amount){ sender->roundStats.garbageCleared += amount; });
 	Net::takeSignal(4, [&](uint8_t amount){ sender->roundStats.linesBlocked += amount; });
@@ -50,6 +51,12 @@ Connections::Connections() : tcpPort(21512), sender(nullptr),
 	});
 
 	Net::takeSignal(20, [&](){ if (sender->spectating) sender->spectating->removeSpectator(*sender); });
+
+	connectSignal("SendUDP", &Connections::sendUDP, this);
+	connectSignal("SendAuthResult", &Connections::sendAuthResult, this);
+	connectSignal("GetUploadData", &Connections::getUploadData, this);
+	connectSignal("SendClientJoinedServerInfo", &Connections::sendClientJoinedServerInfo, this);
+	connectSignal("GetServerKey", [&](){ return serverkey; });
 }
 
 bool Connections::setUpListener() {
@@ -69,18 +76,11 @@ void Connections::listen() {
 void Connections::receive() {
 	if (selector.isReady(listener)) {
 		static uint16_t idcount = 60000;
-		clients.emplace_back(this);
-		Client& newclient = clients.back();
-		newclient.id = idcount;
-		idcount++;
-		if (listener.accept(*newclient.socket) == sf::Socket::Done) {
-			std::cout << "Client accepted: " << idcount-1  << std::endl;
-			newclient.address = newclient.socket->getRemoteAddress();
-			newclient.lastHeardFrom = serverClock.getElapsedTime();
-			newclient.guest=true;
-			newclient.updateStatsTime = serverClock.getElapsedTime();
-			newclient.history.client = &newclient;
-			selector.add(*newclient.socket);
+		clients.emplace_back(std::make_shared<HumanClient>());
+		Client& newclient = *clients.back();
+		newclient.id = idcount++;
+
+		if (newclient.initHuman(listener, selector, serverClock.getElapsedTime())) {
 			clientCount++;
 			sendWelcomeMsg();
 			lobby.sendTournamentList(newclient);
@@ -100,12 +100,13 @@ void Connections::receive() {
 		if (status == sf::Socket::Done)
 			handlePacket(packet);
 	}
-	for (auto it = clients.begin(); it != clients.end();  it++)
-		if (selector.isReady(*it->socket)) {
+	for (auto it = clients.begin(); it != clients.end();  it++) {
+		HumanClient& client = *(*it);
+		if (selector.isReady(client.socket)) {
 			sf::Packet packet;
-			status = it->socket->receive(packet);
+			status = client.socket.receive(packet);
 			if (status == sf::Socket::Done) {
-				sender = &(*it);
+				sender = it->get();
 				sender->lastHeardFrom = serverClock.getElapsedTime();
 				handlePacket(packet);
 			}
@@ -114,13 +115,15 @@ void Connections::receive() {
 				it = clients.erase(it);
 			}
 		}
+	}
 }
 
-void Connections::disconnectClient(Client& client) {
+void Connections::disconnectClient(std::shared_ptr<HumanClient>& client_ptr) {
+	HumanClient& client = *client_ptr; // Need the shared_ptr to push to uploadData
 	sendClientLeftServerInfo(client);
 	if (!client.guest) {
-		uploadData.push_back(client);
-		uploadData.back().uploadTime = serverClock.getElapsedTime() + sf::seconds(240);
+		uploadData.push_back(client_ptr);
+		uploadData.back()->uploadTime = serverClock.getElapsedTime() + sf::seconds(240);
 	}
 	if (client.room != nullptr)
 		client.room->leave(client);
@@ -130,95 +133,47 @@ void Connections::disconnectClient(Client& client) {
 		client.spectating->removeSpectator(client);
 	if (client.matchmaking)
 		lobby.matchmaking1vs1.removeFromQueue(client);
-	selector.remove(*client.socket);
-	client.socket->disconnect();
-	delete client.socket;
+	selector.remove(client.socket);
+	client.socket.disconnect();
 	std::cout << "Client " << client.id << " disconnected" << std::endl;
 	clientCount--;
 }
 
-/*void Connections::send(Client& client) {
-	status = client.socket->send(packet);
-	if (status != sf::Socket::Done)
-		std::cout << "Error sending TCP packet to " << (int)client.id << std::endl;
-}
-
-void Connections::send(Room& room) {
-	for (auto&& it : room.clients) {
-		status = it->socket->send(packet);
-		if (status != sf::Socket::Done)
-			std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
-	}
-}
-
-void Connections::send(Room& room, short type) {
-	if (type == 1) { //Send package to everyone who is not away
-		for (auto&& it : room.clients) {
-			if (!it->away) {
-				status = it->socket->send(packet);
-				if (status != sf::Socket::Done)
-					std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
-			}
-		}
-	}
-	else if (type == 2) {
-		for (auto&& it : room.clients) {
-			if (it->away) { //Send package to everyone who is away
-				status = it->socket->send(packet);
-				if (status != sf::Socket::Done)
-					std::cout << "Error sending TCP packet to room " << (int)room.id << std::endl;
-			}
-		}
-	}
-}*/
-
-void Connections::send(Client& fromClient, Client& toClient) {
+void Connections::send(Client& fromClient, HumanClient& toClient) {
 	status = udpSock.send(fromClient.data, toClient.address, toClient.udpPort);
 	if (status != sf::Socket::Done)
 		std::cout << "Error sending UDP packet from " << (int)fromClient.id << " to " << (int)toClient.id << std::endl;
 }
 
-void Connections::sendUDP(Client& client, sf::Packet& packet) {
+void Connections::sendUDP(HumanClient& client, sf::Packet& packet) {
 	status = udpSock.send(packet, client.address, client.udpPort);
 	if (status != sf::Socket::Done)
 		std::cout << "Error sending UDP packet to " << (int)client.id << std::endl;
 }
 
-/*void Connections::sendSignal(uint8_t signalId, int id1, int id2) {
-	packet.clear();
-	packet << (uint8_t)254 << signalId;
-	if (id1 > -1)
-		packet << (uint16_t)id1;
-	if (id2 > -1)
-		packet << (uint16_t)id2;
-	for (auto&& client : clients) {
-		status = client.socket->send(packet);
-		if (status != sf::Socket::Done)
-			cout << "Error sending Signal packet to " << (int)client.id << endl;
-	}
-}*/
-
 void Connections::sendWelcomeMsg() {
 	sf::Packet packet;
 	uint8_t packetid = 0;
-	packet << packetid << clients.back().id << lobby.welcomeMsg << lobby.roomCount;
+	packet << packetid << clients.back()->id << lobby.welcomeMsg << lobby.roomCount;
 	for (auto& it : lobby.rooms)
 		packet << it->id << it->name << it->currentPlayers << it->maxPlayers;
 	packet << (uint16_t)lobby.matchmaking1vs1.queue.size() << (uint16_t)lobby.matchmaking1vs1.playing.size();
-	uint16_t adjusterClientCount = clientCount-1;
+	uint16_t adjusterClientCount = clientCount + lobby.aiManager.count() - 1;
+	cout << adjusterClientCount;
 	packet << adjusterClientCount;
+	for (auto& client : lobby.aiManager.getBots())
+		packet << client.first << client.second;
 	for (auto&& client : clients)
-		packet << client.id << client.name;
-	clients.back().sendPacket(packet);
+		packet << client->id << client->name;
+	clients.back()->sendPacket(packet);
 }
 
 void Connections::sendAuthResult(uint8_t authresult, Client& client) {
 	sf::Packet packet;
-	uint8_t packetid = 9;
-	packet << packetid;
+	packet << (uint8_t)9;
 	if (authresult == 2) {
 		for (auto&& client : clients) // Checking for duplicate names, and sending back 4 if found
-			if (client.id != sender->id && client.name == sender->name)
+			if (client->id != sender->id && client->name == sender->name)
 				authresult=4;
 	}
 	packet << authresult;
@@ -231,7 +186,7 @@ void Connections::sendAuthResult(uint8_t authresult, Client& client) {
 void Connections::sendChatMsg(sf::Packet& packet) {
 	//Get msg
 	uint8_t type;
-	sf::String to = "", msg;
+	std::string to = "", msg;
 	packet >> type;
 	if (type == 3)
 		packet >> to;
@@ -260,38 +215,37 @@ void Connections::sendChatMsg(sf::Packet& packet) {
 	}
 	else if (type == 2) {
 		for (auto& client : clients)
-			if (client.id != sender->id)
-				client.sendPacket(packet);
+			if (client->id != sender->id)
+				client->sendPacket(packet);
 	}
 	else {
 		for (auto& client : clients)
-			if (client.name == to) {
-				client.sendPacket(packet);
+			if (client->name == to) {
+				client->sendPacket(packet);
 				break;
 			}
 	}
 }
 
-void Connections::sendClientJoinedServerInfo(Client& client) {
+void Connections::sendClientJoinedServerInfo(HumanClient& newclient) {
 	sf::Packet packet;
 	uint8_t packetid = 20;
-	packet << packetid << client.id << client.name;
-	for (auto& otherClient : clients)
-		if (otherClient.id != client.id)
-			otherClient.sendPacket(packet);
+	packet << packetid << newclient.id << newclient.name;
+	for (auto& client : clients)
+		client->sendPacket(packet);
 }
 
-void Connections::sendClientLeftServerInfo(Client& client) { // MOVE
+void Connections::sendClientLeftServerInfo(HumanClient& client) { // MOVE
 	sf::Packet packet;
 	uint8_t packetid = 21;
 	packet << packetid << client.id;
 	for (auto& otherClient : clients)
-		if (otherClient.id != client.id)
-			otherClient.sendPacket(packet);
+		if (otherClient->id != client.id)
+			otherClient->sendPacket(packet);
 }
 
 void Connections::validateClient(sf::Packet& packet) {
-	sf::String name, pass;
+	std::string name, pass;
 	uint8_t guest;
 	uint16_t version;
 	packet >> version >> guest >> sender->name;
@@ -301,23 +255,23 @@ void Connections::validateClient(sf::Packet& packet) {
 	}
 	else if (guest) {
 		sendAuthResult(2, *sender);
-		std::cout << "Guest confirmed: " << sender->name.toAnsiString() << std::endl;
+		std::cout << "Guest confirmed: " << sender->name << std::endl;
 		sendClientJoinedServerInfo(*sender);
 		sender->sendAlert("First time here using the latest version i see.\nTake the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
 	}
 	else
-		sender->thread = new std::thread(&Client::authUser, sender);
+		AsyncTask::add([=](){ sender->authUser(); });
 }
 
 void Connections::validateUDP(sf::Packet& packet) {
 	uint16_t clientid;
 	packet >> clientid;
 	for (auto&& client : clients)
-		if (client.id == clientid) {
-			if (client.udpPort != udpPort)
-				client.udpPort = udpPort;
-			client.sendSignal(14);
-			cout << "Confirmed UDP port for " << client.id << endl;
+		if (client->id == clientid) {
+			if (client->udpPort != udpPort)
+				client->udpPort = udpPort;
+			client->sendSignal(14);
+			cout << "Confirmed UDP port for " << client->id << endl;
 			return;
 		}
 }
@@ -335,7 +289,7 @@ void Connections::getGamestate(sf::Packet& packet) {
 		if (sender->history.states.size() > 100)
 			sender->history.states.pop_back();
 
-		for (int c=0; packet >> extractor.tmp[c]; ++c) {}
+		extractor.loadTmp(packet);
 		extractor.extract(sender->history.states.front());
 		//sender->history.validate();
 	}
@@ -371,10 +325,10 @@ void Connections::handlePacket(sf::Packet& packet) {
 		packet >> clientid;
 		bool valid=false;
 		for (auto&& client : clients)
-			if (client.id == clientid && client.address == udpAdd && client.udpPort == udpPort) {
-				sender = &client;
+			if (client->id == clientid && client->address == udpAdd && client->udpPort == udpPort) {
+				sender = client.get();
 				valid=true;
-				sender->lastHeardFrom = serverClock.getElapsedTime();
+				client->lastHeardFrom = serverClock.getElapsedTime();
 				break;
 			}
 		if (!valid)
@@ -390,14 +344,14 @@ void Connections::handlePacket(sf::Packet& packet) {
 void Connections::manageRooms() {
 	for (auto&& room : lobby.rooms) {
 		if (room->active) {
-			room->sendGameData();
+			room->sendGameData(udpSock);
 			room->makeCountdown();
 			room->checkIfRoundEnded();
 		}
 	}
 	for (auto&& room : lobby.tmp_rooms) {
 		if (room->active) {
-			room->sendGameData();
+			room->sendGameData(udpSock);
 			room->makeCountdown();
 			room->checkIfRoundEnded();
 		}
@@ -409,23 +363,23 @@ void Connections::manageClients() {
 	static sf::Time users_online_update = sf::seconds(0);
 	JSONWrap jwrap;
 	for (auto it = clients.begin(); it != clients.end();  it++) {
-		if (serverClock.getElapsedTime() - it->lastHeardFrom > sf::seconds(10)) {
+		HumanClient& client = *(*it);
+		if (serverClock.getElapsedTime() - client.lastHeardFrom > sf::seconds(10)) {
 			disconnectClient(*it);
 			it = clients.erase(it);
 			continue;
 		}
-		if (serverClock.getElapsedTime() - it->updateStatsTime > sf::seconds(60) && !it->guest) {
-			it->updateStatsTime = serverClock.getElapsedTime();
-			it->thread = new std::thread(&Client::sendData, &(*it));
+		if (serverClock.getElapsedTime() - client.updateStatsTime > sf::seconds(60) && !client.guest) {
+			client.updateStatsTime = serverClock.getElapsedTime();
+			AsyncTask::add([&](){ client.sendData(); });
 		}
-		it->checkIfStatsSet();
-		it->checkIfAuth();
-		it->sendLines();
+		client.checkIfStatsSet();
+		client.checkIfAuth();
 
-		if (it->room)
-			jwrap.addPair(std::to_string(it->id), it->room->gamemode);
+		if (client.room)
+			jwrap.addPair(std::to_string(client.id), client.room->gamemode);
 		else
-			jwrap.addPair(std::to_string(it->id), 0);
+			jwrap.addPair(std::to_string(client.id), 0);
 	}
 
 	if (serverClock.getElapsedTime() > users_online_update) {
@@ -442,28 +396,21 @@ void Connections::manageClients() {
 
 void Connections::manageUploadData() {
 	for (auto it = uploadData.begin(); it != uploadData.end(); it++) {
-		if (serverClock.getElapsedTime() > it->uploadTime) {
-			it->sdataPut=true;
-			it->thread = new std::thread(&Client::sendData, &(*it));
-			it->uploadTime = it->uploadTime + sf::seconds(1000);
+		HumanClient& client = *(*it);
+		if (serverClock.getElapsedTime() > client.uploadTime) {
+			client.sdataPut=true;
+			AsyncTask::add([&](){ client.sendData(); });
+			client.uploadTime = client.uploadTime + sf::seconds(1000);
 		}
-		if (it->sdataSet) {
-			if (it->thread->joinable()) {
-				it->thread->join();
-				delete it->thread;
-				it->sdataSet=false;
-				it->sdataSetFailed=false;
-				it = uploadData.erase(it);
-			}
+		if (client.sdataSet) {
+			client.sdataSet=false;
+			client.sdataSetFailed=false;
+			it = uploadData.erase(it);
 		}
-		else if (it->sdataSetFailed) {
-			if (it->thread->joinable()) {
-				it->thread->join();
-				delete it->thread;
-				it->sdataSet=false;
-				it->sdataSetFailed=false;
-				it->thread = new std::thread(&Client::sendData, &(*it));
-			}
+		else if (client.sdataSetFailed) {
+			client.sdataSet=false;
+			client.sdataSetFailed=false;
+			AsyncTask::add([&](){ client.sendData(); });
 		}
 	}
 }
@@ -494,5 +441,20 @@ bool Connections::getKey() {
 		challongekey = line;
 		return true;
 	}
+	return false;
+}
+
+bool Connections::getUploadData(HumanClient& newclient) {
+	for (auto it = uploadData.begin(); it != uploadData.end(); it++) {
+		HumanClient& client = *(*it);
+		if (client.id == newclient.id && !client.sdataPut) {
+			std::cout << "Getting data for " << id << " from uploadData" << std::endl;
+			newclient.stats = client.stats;
+			newclient.sdataInit=true;
+			it = uploadData.erase(it);
+			return true;
+		}
+	}
+
 	return false;
 }

@@ -9,8 +9,8 @@ using std::to_string;
 BasicField::BasicField() {}
 
 bool BasicField::possible() {
-    for (int x=0; x<4; x++)
-        for (int y=0; y<4; y++)
+    for (int8_t x=0; x<4; x++)
+        for (int8_t y=0; y<4; y++)
             if (piece.grid[y][x]) {
                 if (piece.posX+x<0 || piece.posX+x>9 || piece.posY+y<0 || piece.posY+y>21)
                     return false;

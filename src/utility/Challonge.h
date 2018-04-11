@@ -4,7 +4,7 @@
 #include <SFML/Network.hpp>
 
 class challongeHandler {
-	sf::String challongekey;
+	std::string challongekey;
 	//json j;
 
 	void getTournamentIndex();

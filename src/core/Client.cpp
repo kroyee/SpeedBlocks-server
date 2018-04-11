@@ -2,19 +2,14 @@
 #include "Connections.h"
 #include "JSONWrap.h"
 #include "Room.h"
+#include "AsyncTask.h"
 using std::cout;
 using std::endl;
 
-Client::Client(Connections* _conn) : conn(_conn), guest(false), away(false) {
-	socket = new sf::TcpSocket; room=nullptr; sdataSet=false; sdataSetFailed=false; sdataInit=false;
-	sdataPut=false; tournament = nullptr; spectating=nullptr;
-	sdataPutFailed=false; authresult=0; matchmaking=false; updateStatsTime=sf::seconds(0);
-}
-
-void Client::authUser() {
+void HumanClient::authUser() {
 	sf::Http::Request request("/hash_check.php", sf::Http::Request::Post);
 
-    sf::String stream = "hash=" + name;
+    std::string stream = "hash=" + name;
     request.setBody(stream);
     request.setField("Content-Type", "application/x-www-form-urlencoded");
 
@@ -23,12 +18,12 @@ void Client::authUser() {
 
     if (response.getStatus() == sf::Http::Response::Ok) {
         if (response.getBody() != "Failed") {
-        	sf::String authresponse = response.getBody();
+        	std::string authresponse = response.getBody();
         	short c = authresponse.find('%');
-        	name = authresponse.substring(c+1, 100);
-        	authresponse = authresponse.substring(0, c);
+        	name = authresponse.substr(c+1, 100);
+        	authresponse = authresponse.substr(0, c);
         	std::cout << "Auth successfull: " << id << " -> ";
-			id = stoi(authresponse.toAnsiString());
+			id = stoi(authresponse);
 			std::cout << id << std::endl;
         	authresult=1;
         }
@@ -103,74 +98,52 @@ void Client::getData() {
 }
 
 void Client::checkIfStatsSet() {
-	if (sdataSet)
-		if (thread->joinable()) {
-			thread->join();
-			delete thread;
-			sdataSet=false;
-			if (stats.alert) {
-				sendAlert("First time here using the latest version i see. Take the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
-				stats.alert=false;
-			}
+	if (sdataSet) {
+		sdataSet=false;
+		if (stats.alert) {
+			sendAlert("First time here using the latest version i see. Take the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
+			stats.alert=false;
 		}
-	if (sdataSetFailed)
-		if (thread->joinable()) {
-			thread->join();
-			delete thread;
-			sdataSetFailed=false;
-			thread = new std::thread(&Client::getData, this);
-		}
-	if (sdataPutFailed)
-		if (thread->joinable()) {
-			thread->join();
-			delete thread;
-			sdataPutFailed=false;
-			thread = new std::thread(&Client::sendData, this);
-		}
+	}
+	if (sdataSetFailed) {
+		sdataSetFailed=false;
+		AsyncTask::add([&](){ getData(); });
+	}
+	if (sdataPutFailed) {
+		sdataPutFailed=false;
+		AsyncTask::add([&](){ sendData(); });
+	}
 }
 
-void Client::checkIfAuth() {
+static auto& sendAuthResult = Signal<void, uint8_t, Client&>::get("SendAuthResult");
+static auto& getUploadData = Signal<bool, HumanClient&>::get("GetUploadData");
+static auto& sendClientJoinedServerInfo = Signal<void, HumanClient&>::get("SendClientJoinedServerInfo");
+
+void HumanClient::checkIfAuth() {
 	if (authresult) {
-		if (thread->joinable()) {
-			thread->join();
-			delete thread;
-			if (authresult==1) {
-				conn->sendAuthResult(1, *this);
-				guest=false;
-				bool copyfound=false;
-				for (auto it = conn->uploadData.begin(); it != conn->uploadData.end(); it++)
-					if (it->id == id && !it->sdataPut) {
-						std::cout << "Getting data for " << id << " from uploadData" << std::endl;
-						stats = it->stats;
-						sdataInit=true;
-						copyfound=true;
-						it = conn->uploadData.erase(it);
-						break;
-					}
-				if (!copyfound)
-					thread = new std::thread(&Client::getData, this);
-				authresult=0;
-				conn->sendClientJoinedServerInfo(*this);
-			}
-			else if (authresult==2) {
-				conn->sendAuthResult(0, *this);
-				authresult=0;
-			}
-			else {
-				thread = new std::thread(&Client::authUser, this);
-				authresult=0;
-			}
+		if (authresult==1) {
+			sendAuthResult(1, *this);
+			guest=false;
+			if (!getUploadData(*this))
+				AsyncTask::add([&](){ getData(); });
+			authresult=0;
+			sendClientJoinedServerInfo(*this);
+		}
+		else if (authresult==2) {
+			sendAuthResult(0, *this);
+			authresult=0;
+		}
+		else {
+			AsyncTask::add([&](){ authUser(); });
+			authresult=0;
 		}
 	}
 }
 
 void Client::sendLines() {
 	if (roundStats.incLines>=1) {
-		uint8_t amount=0;
-		while (roundStats.incLines>=1) {
-			amount++;
-			roundStats.incLines-=1.0f;
-		}
+		uint8_t amount = roundStats.incLines;
+		roundStats.incLines -= amount;
 		sendSignal(9, amount);
 	}
 }
@@ -208,21 +181,28 @@ void Client::getRoundData(sf::Packet& packet) {
 	packet >> roundStats.maxCombo >> roundStats.linesSent >> roundStats.linesReceived;
 	packet >> roundStats.linesBlocked >> roundStats.bpm;
 
-	room->sendSignal(13, id, roundStats.position);
-	room->sendSignalToSpectators(13, id, roundStats.position);
+	sendPositionBpm();
 }
+
+static auto& checkChallengeResult = Signal<void, Client&, sf::Packet&>::get("CheckChallengeResult");
 
 void Client::getWinnerData(sf::Packet& packet) {
 	if (room == nullptr)
 		return;
 	packet >> roundStats.maxCombo >> roundStats.linesSent >> roundStats.linesReceived;
 	packet >> roundStats.linesBlocked >> roundStats.bpm;
+
 	if (room->round) {
 		roundStats.position=1;
 		room->endRound();
 		if (room->gamemode >= 20000)
-			conn->lobby.challengeHolder.checkResult(*this, packet);
+			checkChallengeResult(*this, packet);
 	}
+
+	makeWinner();
+}
+
+void Client::makeWinner() {
 	room->sendRoundScores();
 	room->updatePlayerScore();
 	room->incrementGamesWon(*this);
@@ -230,19 +210,29 @@ void Client::getWinnerData(sf::Packet& packet) {
 		stats.maxBpm = roundStats.bpm;
 }
 
-void Client::sendPacket(sf::Packet& packet) {
-	if (socket->send(packet) != sf::Socket::Done)
+void Client::sendPositionBpm() {
+	if (!room)
+		return;
+
+	room->sendSignal(13, id, roundStats.position);
+	room->sendSignalToSpectators(13, id, roundStats.position);
+	room->sendSignal(23, id, roundStats.bpm);
+	room->sendSignalToSpectators(23, id, roundStats.bpm);
+}
+
+void HumanClient::sendPacket(sf::Packet& packet) {
+	if (socket.send(packet) != sf::Socket::Done)
 		std::cout << "Error sending TCP packet to " << id << std::endl;
 }
 
-void Client::sendSignal(uint8_t signalId, int id1, int id2) {
+void HumanClient::sendSignal(uint8_t signalId, int id1, int id2) {
 	sf::Packet packet;
 	packet << (uint8_t)254 << signalId;
 	if (id1 > -1)
 		packet << (uint16_t)id1;
 	if (id2 > -1)
 		packet << (uint16_t)id2;
-	if (socket->send(packet) != sf::Socket::Done)
+	if (socket.send(packet) != sf::Socket::Done)
 		std::cout << "Error sending Signal packet to " << id << std::endl;
 }
 
@@ -257,8 +247,75 @@ void Client::sendJoinRoomResponse(Room& room, uint16_t joinok) {
 	sendPacket(packet);
 }
 
-void Client::sendAlert(const sf::String& msg) {
+void Client::sendAlert(const std::string& msg) {
 	sf::Packet packet;
 	packet << (uint8_t)10 << msg;
 	sendPacket(packet);
+}
+
+bool HumanClient::initHuman(sf::TcpListener& listener, sf::SocketSelector& selector, const sf::Time& t) {
+	if (listener.accept(socket) != sf::Socket::Done)
+		return false;
+
+	std::cout << "Client accepted: " << id << std::endl;
+	address = socket.getRemoteAddress();
+	lastHeardFrom = t;
+	guest=true;
+	updateStatsTime = t;
+	history.client = this;
+	selector.add(socket);
+
+	return true;
+}
+
+void HumanClient::sendGameData(sf::UdpSocket& udp) {
+	if (!room)
+		return;
+
+	for (auto& client : room->clients)
+		if (client->id != id)
+			client->sendGameDataOut(udp, data);
+
+	for (auto& client : room->spectators)
+		client->sendGameDataOut(udp, data);
+}
+
+void HumanClient::sendGameDataOut(sf::UdpSocket& udp, sf::Packet& packet) {
+	auto status = udp.send(packet, address, udpPort);
+	if (status != sf::Socket::Done)
+		std::cout << "Error sending UDP game-data to " << (int)id << std::endl;
+}
+
+static auto& sendUDP = Signal<void, HumanClient&, sf::Packet&>::get("SendUDP");
+
+void HumanClient::countDown(const sf::Time& t) {
+	uint16_t compensate = std::min(ping.getAverage()/2, ping.getLowest());
+	compensate=3000-t.asMilliseconds()-compensate;
+	sf::Packet packet;
+	packet << (uint8_t)103 << compensate;
+	sendUDP(*this, packet);
+}
+
+void HumanClient::seed(uint16_t seed1, uint16_t seed2, uint8_t signal_id) {
+	if (signal_id || away)
+		signal_id = 10;
+	else
+		signal_id = 4;
+
+	sendSignal(signal_id, seed1, seed2);
+}
+
+void HumanClient::endRound() {
+	sendSignal(7);
+}
+
+void HumanClient::startGame() {
+	datavalid=false;
+	datacount=250;
+	roundStats.clear();
+	history.clear();
+	if (!away && room) {
+		room->incrementGamesPlayed(*this);
+		alive=true;
+	}
 }

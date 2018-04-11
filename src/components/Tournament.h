@@ -5,7 +5,7 @@
 #include <list>
 #include <thread>
 
-class Client;
+class HumanClient;
 class Room;
 class Tournament;
 class Connections;
@@ -24,7 +24,7 @@ class Participant {
 public:
 	Participant();
 	uint16_t id;
-	sf::String name;
+	std::string name;
 	sf::Time waitingTime;
 	uint16_t sentWaitingTime;
 	bool played;
@@ -75,7 +75,7 @@ public:
 	Tournament(Connections&);
 	Connections& conn;
 	std::vector<Participant> participants;
-	std::list<Client*> keepUpdated;
+	std::list<HumanClient*> keepUpdated;
 	Bracket bracket;
 	uint16_t players;
 	uint8_t rounds, sets;
@@ -84,7 +84,7 @@ public:
 	uint8_t status;
 	sf::Time waitingTime;
 
-	sf::String name;
+	std::string name;
 	uint16_t id;
 	uint8_t grade;
 
@@ -93,11 +93,11 @@ public:
 	std::thread *thread;
 	bool scoreSent, scoreSentFailed, updated, notify;
 
-	bool addPlayer(Client& client);
-	bool addPlayer(const sf::String& name, uint16_t id);
+	bool addPlayer(HumanClient& client);
+	bool addPlayer(const std::string& name, uint16_t id);
 	bool removePlayer(uint16_t id);
-	void addObserver(Client& client);
-	void removeObserver(Client& client);
+	void addObserver(HumanClient& client);
+	void removeObserver(HumanClient& client);
 	void setStartingTime(short days, short hours, short minutes);
 
 	void makeBracket();

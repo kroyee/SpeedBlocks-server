@@ -7,26 +7,21 @@
 #include <thread>
 #include "AI.h"
 
+class Room;
+
 class AIManager {
 	std::list<AI> bots;
-	int count=0;
 	std::mutex listMutex;
-	sf::Clock& gameclock;
-	std::thread t;
-	std::atomic<bool> terminateThread;
-	std::atomic<uint8_t> alive;
-	Signal<void, uint16_t, RoundStats&, uint16_t>& botSendLines;
+	std::thread aiThread;
+	std::atomic<bool> terminateThread{false};
+
 public:
-	AIManager(sf::Clock& _gameclock, Signal<void, uint16_t, RoundStats&, uint16_t>& _sendLines);
-	void setAmount(unsigned int amount);
+	AI& add(Room&);
+	void clear();
 	void threadRun();
-	int getCount() { return count; }
-	void sendLines(uint16_t senderid, float amount);
+	std::size_t count() { return bots.size(); }
 
-	void startRound();
-	void startCountDown();
-
-	AI* getBot(uint16_t id);
+	std::vector<std::pair<uint16_t, std::string>> getBots();
 };
 
 #endif

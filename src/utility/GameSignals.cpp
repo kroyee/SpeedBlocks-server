@@ -1,19 +1,10 @@
 #include "GameSignals.h"
 
-//Network
-Signal<void, int, int, int> Signals::SendSignal;
-Signal<void, sf::Packet&> Signals::SendPacket;
-Signal<void, sf::Packet&> Signals::SendPacketUDP;
-Signal<void, int, int> Signals::SendPing;
+static auto& SendNetSignal = Signal<void, int, int, int>::get("SendSignal");
 
-//Game
-Signal<void, int> Signals::GameAddDelay;
-
-//AI
-Signal<void, int, int> Signals::DistributeLinesLocally;
-Signal<void, uint8_t> Signals::AmountAI;
-Signal<void, uint16_t> Signals::SpeedAI;
-Signal<void, uint16_t, uint16_t> Signals::SeedRander;
+void SendSignal(int x, int y, int z) {
+	SendNetSignal(x,y,z);
+}
 
 // Packet delegation
 

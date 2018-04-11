@@ -5,7 +5,7 @@ const sf::Time initialDelay = sf::milliseconds(1000);
 const sf::Time freezeDelay = sf::milliseconds(450);
 
 GarbageHandler::GarbageHandler(uint16_t& _linesBlocked) : linesBlocked(_linesBlocked), addDelay(sf::milliseconds(450)) {
-	Signals::GameAddDelay.connect(&GarbageHandler::setAddDelay, this);
+	connectSignal("GameAddDelay", &GarbageHandler::setAddDelay, this);
 }
 
 uint16_t GarbageHandler::count() {
@@ -34,17 +34,12 @@ uint16_t GarbageHandler::block(uint16_t amount, const sf::Time& _time, bool free
 		return amount;
 	sf::Time delay = garbage.front().delay;
 	
-	int blocked=0;
 	while (amount && !garbage.empty()) {
 		garbage.front().count--;
 		amount--;
-		blocked++;
+		linesBlocked++;
 		if (garbage.front().count == 0)
 			garbage.pop_front();
-	}
-	if (blocked) {
-		linesBlocked+=blocked;
-		Signals::SendSig(4, blocked);
 	}
 
 	if (!garbage.empty()) {

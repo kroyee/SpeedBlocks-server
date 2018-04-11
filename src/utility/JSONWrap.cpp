@@ -1,12 +1,13 @@
 #include "JSONWrap.h"
 #include "Client.h"
 #include "Connections.h"
+#include "GameSignals.h"
 #include <iostream>
 using std::cout;
 using std::endl;
 using std::to_string;
 
-void JSONWrap::addPair(const sf::String& key, const sf::String& value, bool wrapinquotes) {
+void JSONWrap::addPair(const std::string& key, const std::string& value, bool wrapinquotes) {
 	Pair newpair;
 	newpair.key = key;
 	if (wrapinquotes)
@@ -16,16 +17,18 @@ void JSONWrap::addPair(const sf::String& key, const sf::String& value, bool wrap
 	pairs.push_back(newpair);
 }
 
-void JSONWrap::addPair(const sf::String& key, int64_t value) {
+void JSONWrap::addPair(const std::string& key, int64_t value) {
 	Pair newpair;
 	newpair.key = key;
 	newpair.value = to_string(value);
 	pairs.push_back(newpair);
 }
 
+static auto& getServerKey = Signal<std::string>::get("GetServerKey");
+
 void JSONWrap::addStatsTable(Client& client, const std::string& table_name) {
 	clear();
-	addPair("key", client.conn->serverkey);
+	addPair("key", getServerKey());
 	addPair("user_id", client.id);
 	addPair("table_name", table_name);
 
@@ -70,7 +73,7 @@ void JSONWrap::jsonToClientStats(StatsHolder& stats, std::string jsonString) {
 	}
 }
 
-sf::Http::Response JSONWrap::sendPost(const sf::String& _request, const sf::String& _url, const sf::String& contenttype) {
+sf::Http::Response JSONWrap::sendPost(const std::string& _request, const std::string& _url, const std::string& contenttype) {
 	sf::Http::Request request(_request, sf::Http::Request::Post);
 	request.setBody(getJsonString());
     request.setField("Content-Type", contenttype);

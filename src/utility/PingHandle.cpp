@@ -1,7 +1,9 @@
 #include "PingHandle.h"
-#include "Connections.h"
+#include "GameSignals.h"
 
-void PingHandle::get(const sf::Time& t, Client& client, sf::Packet& net_packet) {
+static auto& sendUDP = Signal<void, HumanClient&, sf::Packet&>::get("SendUDP");
+
+void PingHandle::get(const sf::Time& t, HumanClient& client, sf::Packet& net_packet) {
 	uint8_t pingId;
 	net_packet >> pingId;
 
@@ -13,7 +15,7 @@ void PingHandle::get(const sf::Time& t, Client& client, sf::Packet& net_packet) 
 			return;
 		}
 	}
-	client.conn->sendUDP(client, net_packet);
+	sendUDP(client, net_packet);
 	PingPacket packet;
 	packet.id=pingId;
 	packet.sent=t;
