@@ -197,8 +197,8 @@ void Node::sendReadyAlert() {
 	if (player1 == nullptr || player2 == nullptr)
 		return;
 	for (auto&& client : tournament.conn.clients)
-		if (client->id == player1->id || client->id == player2->id)
-			client->sendSignal(1, tournament.id);
+		if (client.id == player1->id || client.id == player2->id)
+			client.sendSignal(1, tournament.id);
 }
 
 void Node::sendWaitTime(uint16_t waitTime, uint8_t player) {
@@ -262,7 +262,7 @@ Tournament::Tournament(Connections& _conn) :
 conn(_conn), players(0), startingTime(0), status(0), scoreSent(false),
 scoreSentFailed(false), updated(false), notify(false) {}
 
-bool Tournament::addPlayer(HumanClient& client) {
+bool Tournament::addPlayer(Client& client) {
 	for (auto&& player : participants)
 		if (player.id == client.id)
 			return false;
@@ -276,7 +276,7 @@ bool Tournament::addPlayer(HumanClient& client) {
 	return true;
 }
 
-bool Tournament::addPlayer(const std::string& name, uint16_t id) {
+bool Tournament::addPlayer(const sf::String& name, uint16_t id) {
 	for (auto&& player : participants)
 		if (player.id == id)
 			return false;
@@ -302,7 +302,7 @@ bool Tournament::removePlayer(uint16_t id) {
 	return false;
 }
 
-void Tournament::addObserver(HumanClient& client) {
+void Tournament::addObserver(Client& client) {
 	for (auto&& observer : keepUpdated)
 		if (observer->id == client.id)
 			return;
@@ -310,7 +310,7 @@ void Tournament::addObserver(HumanClient& client) {
 	keepUpdated.push_back(&client);
 }
 
-void Tournament::removeObserver(HumanClient& client) {
+void Tournament::removeObserver(Client& client) {
 	for (auto it = keepUpdated.begin(); it != keepUpdated.end(); it++)
 		if ((*it)->id == client.id) {
 			client.tournament = nullptr;
@@ -371,41 +371,8 @@ void Tournament::linkGames(Node& game1, Node& game2) {
 
 void Tournament::putPlayersInBracket() {
 	int amountinrow = 1*pow(2, bracket.depth-1);
-	/*int start = bracket.games.size()-amountinrow;
-	int step = amountinrow/2.0;
-	unsigned int index = start;
-	bool slot1=true;
-	for (auto&& player : participants) {
-		if (slot1)
-			while (bracket.games[index].player1 != nullptr) {
-				index+=step;
-				if (index >= bracket.games.size()) {
-					if (step < 2) {
-						index=start;
-						step=amountinrow/2.0;
-						slot1=false;
-						break;
-					}
-					step/=2;
-					index=start;
-				}
-			}
-		if (slot1)
-			bracket.games[index].player1 = &player;
-		if (!slot1)
-			while (bracket.games[index].player2 != nullptr) {
-				index+=step;
-				if (index >= bracket.games.size()) {
-					if (step < 2)
-						break;
-					step/=2;
-					index=start;
-				}
-			}
-		if (!slot1)
-			bracket.games[index].player2 = &player;
-	}*/
 	int counter=0;
+	
 	std::random_shuffle(participants.begin(), participants.end());
 	for (auto&& player : participants) {
 		int z=1, x=counter;
@@ -469,14 +436,14 @@ void Tournament::printBracket() {
 		}
 		cout << game.id << ": ";
 		if (game.player1 != nullptr)
-			cout << game.player1->name;
+			cout << game.player1->name.toAnsiString();
 		else if (game.p1game != nullptr)
 			cout << game.p1game->id;
 		else
 			cout << "Empty";
 		cout << " vs ";
 		if (game.player2 != nullptr)
-			cout << game.player2->name;
+			cout << game.player2->name.toAnsiString();
 		else if (game.p2game != nullptr)
 			cout << game.p2game->id;
 		else
@@ -573,7 +540,7 @@ void Tournament::sendGames(bool asPart) {
 
 void Tournament::sendToTournamentObservers() {
 	for (auto&& client : keepUpdated) {
-		conn.status = client->socket.send(packet);
+		conn.status = client->socket->send(packet);
 		if (conn.status != sf::Socket::Done)
 			cout << "Error sending TCP packet to tournament observer " << id << endl;
 	}
@@ -688,20 +655,20 @@ void Tournament::scoreTournament() {
 void Tournament::save() {
 	if (/*!updated || */status != 0)
 		return;
-	cout << "Saving tournament " << name << endl;
+	cout << "Saving tournament " << name.toAnsiString() << endl;
 	std::ofstream file("Tournaments/" + name);
 	if (!file.is_open()) {
-		cout << "Failed to save tournament " << name << endl;
+		cout << "Failed to save tournament " << name.toAnsiString() << endl;
 		return;
 	}
-	file << name << endl << (int)grade << endl;
+	file << name.toAnsiString() << endl << (int)grade << endl;
 	file << startingTime << endl << (int)rounds << endl << (int)sets << endl;
 	file << moderator_list.size() << endl;
 	for (auto mod : moderator_list)
 		file << mod << endl;
 	file << players << endl;
 	for (auto player : participants)
-		file << player.id << endl << player.name << endl;
+		file << player.id << endl << player.name.toAnsiString() << endl;
 
 	updated=false;
 	file.close();
