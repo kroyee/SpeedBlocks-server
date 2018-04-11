@@ -222,10 +222,53 @@ void AI::setMode(Mode _mode, bool vary) {
 	secondMove.weights = weights;
 }
 
-void AI::setSpeed(uint16_t _speed) {
+AI& AI::setSpeed(uint16_t _speed) {
 	float speed = 60000000.0 / (_speed*1.05);
 	moveTime = sf::microseconds(speed);
 	finesseTime = sf::microseconds(speed / 15.0);
+	return *this;
+}
+
+void AI::updateSpeed() {
+	if (!room)
+		return;
+
+	uint16_t highest_speed=50, lowest_speed=10000, average_speed=0, total_speed=0;
+	for (auto& client : room->clients) {
+		if (client->id == id)
+			continue;
+
+		highest_speed = std::max(client->roundStats.bpm, highest_speed);
+		lowest_speed = std::min(client->roundStats.bpm, lowest_speed);
+		total_speed += client->roundStats.bpm;
+		average_speed++;
+	}
+	average_speed = total_speed / average_speed;
+
+	switch (competative) {
+		case Competative::Low:
+			setSpeed(std::max(lowest_speed, (uint16_t)50));
+			break;
+
+		case Competative::Medium:
+			setSpeed(average_speed);
+			break;
+
+		case Competative::High:
+			setSpeed(std::min(highest_speed, (uint16_t)250));
+			break;
+
+		case Competative::Super:
+			setSpeed(highest_speed * 1.2);
+			break;
+
+		default: break;
+	}
+}
+
+AI& AI::setCompetative(Competative comp) {
+	competative = comp;
+	return *this;
 }
 
 bool AI::aiThreadRun() {
@@ -510,6 +553,5 @@ void AI::getRoundData(sf::Packet&) {
 	ready=false;
 	room->playerDied(*this);
 
-	room->sendSignal(13, id, roundStats.position);
-	room->sendSignalToSpectators(13, id, roundStats.position);
+	sendPositionBpm();
 }

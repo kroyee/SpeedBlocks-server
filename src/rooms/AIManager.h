@@ -16,7 +16,7 @@ class AIManager {
 	std::atomic<bool> terminateThread{false};
 
 public:
-	void add(Room&);
+	AI& add(Room&);
 	void clear();
 	void threadRun();
 	std::size_t count() { return bots.size(); }

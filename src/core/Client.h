@@ -46,6 +46,8 @@ public:
 
 	virtual void getRoundData(sf::Packet& packet);
 	void getWinnerData(sf::Packet& packet);
+	void makeWinner();
+	void sendPositionBpm();
 
 	void sendJoinRoomResponse(Room& room, uint16_t joinok);
 	void sendAlert(const std::string& msg);
@@ -64,6 +66,7 @@ public:
 	virtual void endRound() {}
 	virtual void startGame() {}
 	virtual bool isHuman() { return false; }
+	virtual void updateSpeed() {}
 
 	virtual ~Client() = default;
 };

@@ -24,6 +24,8 @@ class Resources;
 
 enum class Mode { Downstack, Stack };
 
+enum class Competative { None, Low, Medium, High, Super };
+
 class AI : public Client {
 public:
 	std::array<double, 10> weights, downstackWeights, stackWeights;
@@ -40,6 +42,8 @@ public:
 
 	uint16_t gameCount;
 	uint16_t score;
+
+	Competative competative = Competative::None;
 
 	float incomingLines;
 
@@ -78,7 +82,9 @@ public:
 	void addGarbageLine();
 
 	void setMode(Mode, bool vary=false);
-	void setSpeed(uint16_t speed);
+	AI& setSpeed(uint16_t speed);
+	void updateSpeed() override;
+	AI& setCompetative(Competative);
 
 	bool aiThreadRun();
 

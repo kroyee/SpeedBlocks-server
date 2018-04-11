@@ -34,6 +34,10 @@ void Room::startCountdown() {
 	start.restart();
 	seed1 = rand();
 	seed2 = rand();
+	
+	for (auto& client : clients)
+		client->updateSpeed();
+
 	for (auto& client : clients)
 		client->seed(seed1, seed2);
 
@@ -337,6 +341,9 @@ void Room::checkIfRoundEnded() {
 
 					scoreRound();
 					transfearScore();
+
+					if (!winner->isHuman())
+						winner->makeWinner();
 					break;
 				}
 			endRound();

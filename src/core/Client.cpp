@@ -181,8 +181,7 @@ void Client::getRoundData(sf::Packet& packet) {
 	packet >> roundStats.maxCombo >> roundStats.linesSent >> roundStats.linesReceived;
 	packet >> roundStats.linesBlocked >> roundStats.bpm;
 
-	room->sendSignal(13, id, roundStats.position);
-	room->sendSignalToSpectators(13, id, roundStats.position);
+	sendPositionBpm();
 }
 
 static auto& checkChallengeResult = Signal<void, Client&, sf::Packet&>::get("CheckChallengeResult");
@@ -192,17 +191,33 @@ void Client::getWinnerData(sf::Packet& packet) {
 		return;
 	packet >> roundStats.maxCombo >> roundStats.linesSent >> roundStats.linesReceived;
 	packet >> roundStats.linesBlocked >> roundStats.bpm;
+
 	if (room->round) {
 		roundStats.position=1;
 		room->endRound();
 		if (room->gamemode >= 20000)
 			checkChallengeResult(*this, packet);
 	}
+
+	makeWinner();
+}
+
+void Client::makeWinner() {
 	room->sendRoundScores();
 	room->updatePlayerScore();
 	room->incrementGamesWon(*this);
 	if (roundStats.bpm > stats.maxBpm && room->roundLenght > sf::seconds(10))
 		stats.maxBpm = roundStats.bpm;
+}
+
+void Client::sendPositionBpm() {
+	if (!room)
+		return;
+
+	room->sendSignal(13, id, roundStats.position);
+	room->sendSignalToSpectators(13, id, roundStats.position);
+	room->sendSignal(23, id, roundStats.bpm);
+	room->sendSignalToSpectators(23, id, roundStats.bpm);
 }
 
 void HumanClient::sendPacket(sf::Packet& packet) {

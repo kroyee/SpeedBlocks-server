@@ -15,12 +15,13 @@ static std::vector<std::string> names = {
 	"Blocks"
 };
 
-void AIManager::add(Room& room) {
+AI& AIManager::add(Room& room) {
 	static uint16_t idcount = 59000;
 	bots.emplace_back(room);
-	bots.back().id = idcount++;
-	bots.back().setSpeed(100);
-	bots.back().name = names[bots.back().rander.get() * names.size()];
+	AI& bot = bots.back();
+	bot.id = idcount++;
+	bot.setSpeed(70);
+	bot.name = names[bot.rander.get() * names.size()];
 
 	if (idcount > 59999)
 		idcount = 59000;
@@ -30,6 +31,8 @@ void AIManager::add(Room& room) {
 	terminateThread=false;
 	if (!aiThread.joinable())
 		aiThread = std::thread(&AIManager::threadRun, this);
+
+	return bot;
 }
 
 void AIManager::clear() {

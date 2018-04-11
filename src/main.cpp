@@ -43,8 +43,8 @@ int main() {
 
 	conn.lobby.idcount=1; // Adding permanent rooms
 	conn.lobby.addRoom("Ranked FFA", 0, 1, 3);
-	conn.lobby.aiManager.add(*conn.lobby.rooms.back());
-	conn.lobby.aiManager.add(*conn.lobby.rooms.back());
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::Low);
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::High);
 	conn.lobby.addRoom("Ranked Hero", 0, 2, 3);
 	conn.lobby.addRoom("Casual", 0, 3, 3);
 	conn.lobby.idcount=10;
