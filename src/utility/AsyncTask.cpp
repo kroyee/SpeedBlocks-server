@@ -1,15 +1,21 @@
 #include "AsyncTask.h"
 #include <chrono>
+#include <mutex>
 
 namespace AsyncTask {
 
 	namespace detail {
 		std::deque<std::future<void>> futureQueue;
+		std::mutex mutex;
 	}
 
-	bool empty() { return detail::futureQueue.empty(); }
+	bool empty() {
+		std::lock_guard<std::mutex> guard(mutex);
+		return detail::futureQueue.empty();
+	}
 
 	void check() {
+		std::lock_guard<std::mutex> guard(mutex);
 		while (detail::futureQueue.front().valid()) {
 			if (detail::futureQueue.front().wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 				detail::futureQueue.front().get();
@@ -20,6 +26,7 @@ namespace AsyncTask {
 	}
 
 	void exit() {
+		std::lock_guard<std::mutex> guard(mutex);
 		while (!detail::futureQueue.empty()) {
 			if (detail::futureQueue.front().valid()) {
 				detail::futureQueue.front().get();
