@@ -3,6 +3,7 @@
 
 #include <deque>
 #include <future>
+#include <mutex>
 
 namespace AsyncTask {
 
@@ -13,13 +14,13 @@ namespace AsyncTask {
 
 	template <typename F>
 	void add(F func) {
-		std::lock_guard<std::mutex> guard(mutex);
+		std::lock_guard<std::mutex> guard(detail::mutex);
 		detail::futureQueue.emplace_back( std::async(std::launch::async, func) );
 	}
 
 	template <typename F>
 	void addAndRepeat(F func, int repeat = 3) {
-		std::lock_guard<std::mutex> guard(mutex);
+		std::lock_guard<std::mutex> guard(detail::mutex);
 		detail::futureQueue.emplace_back( std::async(std::launch::async, [func, repeat]() mutable {
 			while (repeat && func())
 				--repeat;
@@ -28,7 +29,7 @@ namespace AsyncTask {
 
 	template <typename F1, typename F2>
 	void addAndReact(F1 func1, F2 func2) {
-		std::lock_guard<std::mutex> guard(mutex);
+		std::lock_guard<std::mutex> guard(detail::mutex);
 		detail::futureQueue.emplace_back( std::async(std::launch::async, [func1, func2](){
 			func2(func1());
 		}) );
