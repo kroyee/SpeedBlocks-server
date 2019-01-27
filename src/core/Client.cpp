@@ -171,6 +171,17 @@ void Client::unAway() {
 	room->sendSignalToSpectators(12, id);
 }
 
+void Client::clear() {
+	alive=false;
+	datavalid=false;
+	away=false;
+	datacount=250;
+	ready=false;
+	roundStats.clear();
+	history.clear();
+	hcp.set(0);
+}
+
 void Client::getRoundData(sf::Packet& packet) {
 	if (room == nullptr)
 		return;
@@ -314,6 +325,7 @@ void HumanClient::startGame() {
 	datacount=250;
 	roundStats.clear();
 	history.clear();
+	hcp.clear();
 	if (!away && room) {
 		room->incrementGamesPlayed(*this);
 		alive=true;

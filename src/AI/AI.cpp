@@ -310,6 +310,7 @@ void AI::startGame() {
 	bpmCounter.clear();
 	pieceDropDelay.clear();
 	roundStats.clear();
+	hcp.clear();
 	incomingLines=0;
 	setPiece(nextpiece);
 	setNextPiece(rander.getPiece());

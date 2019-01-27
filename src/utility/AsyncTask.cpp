@@ -1,5 +1,6 @@
 #include "AsyncTask.h"
 #include <chrono>
+#include <iostream>
 
 namespace AsyncTask {
 
@@ -15,7 +16,7 @@ namespace AsyncTask {
 
 	void check() {
 		std::lock_guard<std::mutex> guard(detail::mutex);
-		while (detail::futureQueue.front().valid()) {
+		while (!detail::futureQueue.empty() && detail::futureQueue.front().valid()) {
 			if (detail::futureQueue.front().wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 				detail::futureQueue.front().get();
 				detail::futureQueue.pop_front();

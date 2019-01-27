@@ -9,6 +9,7 @@
 #include "ClientHistory.h"
 #include "PingHandle.h"
 #include "StatsHolders.h"
+#include "Handicap.h"
 
 class Room;
 class Connections;
@@ -30,9 +31,9 @@ public:
 	bool matchmaking=false, sdataPutFailed=false, sdataInit=false, sdataPut=false, away=false, ready=false;
 
 	RoundStats roundStats;
-
 	StatsHolder stats;
 
+	Handicap hcp;
 	PlayfieldHistory history;
 
 	Tournament* tournament = nullptr;
@@ -43,6 +44,8 @@ public:
 	void checkIfStatsSet();
 	void goAway();
 	void unAway();
+
+	void clear();
 
 	virtual void getRoundData(sf::Packet& packet);
 	void getWinnerData(sf::Packet& packet);

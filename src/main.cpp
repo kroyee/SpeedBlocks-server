@@ -43,10 +43,10 @@ int main() {
 
 	conn.lobby.idcount=1; // Adding permanent rooms
 	conn.lobby.addRoom("Ranked FFA", 0, 1, 3);
-	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::Low);
-	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::High);
 	conn.lobby.addRoom("Ranked Hero", 0, 2, 3);
 	conn.lobby.addRoom("Casual", 0, 3, 3);
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::Low);
+	conn.lobby.aiManager.add(*conn.lobby.rooms.back()).setSpeed(100).setCompetative(Competative::High);
 	conn.lobby.idcount=10;
 
 	conn.lobby.setMsg("Press Enter at any time to activate the chat. Press Enter again to send a message or Esc to deactivate it. Press TAB while the chat is active to change where the message will go to, Room, Lobby or latest priv (shown next to chatbox). Use /w nickname to send private msg.\n\nYou can find some new visual options under the Visual tab. Including disabling that the menu reacts to the mouse.\nAPM in the score screen shows sent+blocked per minute.\n\nEnjoy! :-)");

@@ -31,8 +31,8 @@ Connections::Connections() : tcpPort(21512), sender(nullptr),
 		if (sender->room != nullptr)
 			sender->room->sendLines(*sender, amount);
 	});
-	Net::takeSignal(3, [&](uint8_t amount){ sender->roundStats.garbageCleared += amount; });
-	Net::takeSignal(4, [&](uint8_t amount){ sender->roundStats.linesBlocked += amount; });
+	Net::takeSignal(3, [&](uint16_t amount){ sender->roundStats.garbageCleared += amount; });
+	Net::takeSignal(4, [&](uint16_t amount){ sender->roundStats.linesBlocked += amount; });
 	Net::takeSignal(5, [&](){ sender->goAway(); });
 	Net::takeSignal(6, [&](){ sender->unAway(); });
 	Net::takeSignal(7, [&](){
@@ -51,6 +51,11 @@ Connections::Connections() : tcpPort(21512), sender(nullptr),
 	});
 
 	Net::takeSignal(20, [&](){ if (sender->spectating) sender->spectating->removeSpectator(*sender); });
+	Net::takeSignal(23, [&](uint16_t hcp){
+		sender->hcp.set(hcp);
+		if (sender->room)
+			sender->room->sendSignal(24, sender->id, hcp); // Gör UI ändringar för GameText och ta emot 24 signal
+	});
 
 	connectSignal("SendUDP", &Connections::sendUDP, this);
 	connectSignal("SendAuthResult", &Connections::sendAuthResult, this);
@@ -259,8 +264,10 @@ void Connections::validateClient(sf::Packet& packet) {
 		sendClientJoinedServerInfo(*sender);
 		sender->sendAlert("First time here using the latest version i see.\nTake the time to check out the Message of the Day under the Server tab, there you can find some tips on the new GUI and it's features.");
 	}
-	else
-		AsyncTask::add([=](){ sender->authUser(); });
+	else {
+		HumanClient* passon = sender;
+		AsyncTask::add([passon](){ passon->authUser(); });
+	}
 }
 
 void Connections::validateUDP(sf::Packet& packet) {

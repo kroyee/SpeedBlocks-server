@@ -97,3 +97,5 @@
 // 22 - You are still in the matchmaking queue
 
 // 23 - Sending players average bpm for round, id1=player id, id2=avg_bpm
+
+// 24 - Player changed handicap, id1=player id, id2=hcp amount

@@ -34,7 +34,7 @@ void Room::startCountdown() {
 	start.restart();
 	seed1 = rand();
 	seed2 = rand();
-	
+
 	for (auto& client : clients)
 		client->updateSpeed();
 
@@ -77,58 +77,54 @@ void Room::endRound() {
 		client->endRound();
 }
 
-void Room::join(Client& jClient) {
+void Room::join(Client& client) {
 	if (currentPlayers<maxPlayers || maxPlayers == 0) {
-		if (jClient.spectating)
-			jClient.spectating->removeSpectator(jClient);
-		if (jClient.matchmaking && gamemode != 5) {
-			conn.lobby.matchmaking1vs1.removeFromQueue(jClient);
-			jClient.sendSignal(21);
+		if (client.spectating)
+			client.spectating->removeSpectator(client);
+		if (client.matchmaking && gamemode != 5) {
+			conn.lobby.matchmaking1vs1.removeFromQueue(client);
+			client.sendSignal(21);
 		}
 		currentPlayers++;
 		activePlayers++;
-		clients.push_back(&jClient);
+		clients.push_back(&client);
+
 		if ((activePlayers > 1 && !onlyBots()) || gamemode >= 20000)
 			setActive();
-		jClient.room = this;
-		jClient.alive=false;
-		jClient.datavalid=false;
-		jClient.away=false;
-		jClient.datacount=250;
-		jClient.ready=false;
-		jClient.roundStats.clear();
-		jClient.history.clear();
-		std::cout << jClient.id << " joined room " << id << std::endl;
+
+		client.clear();
+		client.room = this;
+		std::cout << client.name << " (" << client.id << ") joined room " << id << std::endl;
 	}
 }
 
-void Room::leave(Client& lClient) {
+void Room::leave(Client& client) {
 	for (auto it = clients.begin(); it != clients.end(); it++)
-		if ((*it)->id == lClient.id) {
-			matchLeaver(lClient);
+		if ((*it)->id == client.id) {
+			matchLeaver(client);
 			currentPlayers--;
-			if (!lClient.away)
+			if (!client.away)
 				activePlayers--;
-			if (lClient.alive) {
-				lClient.roundStats.position=playersAlive;
-				playerDied(lClient);
+			if (client.alive) {
+				client.roundStats.position=playersAlive;
+				playerDied(client);
 			}
-			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
+			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !client.guest) {
 				leavers.emplace_back();
-				leavers.back().roundStats = lClient.roundStats;
-				leavers.back().stats = lClient.stats;
-				leavers.back().id = lClient.id;
+				leavers.back().roundStats = client.roundStats;
+				leavers.back().stats = client.stats;
+				leavers.back().id = client.id;
 				leavers.back().stats.ffaPoints=0;
 			}
 			it = clients.erase(it);
 			if (activePlayers < 2 || onlyBots())
 				setInactive();
-			lClient.roundStats.incLines = 0;
-			lClient.room = nullptr;
-			std::cout << lClient.id << " left room " << id << std::endl;
+			client.roundStats.incLines = 0;
+			client.room = nullptr;
+			std::cout << client.name << " (" << client.id << ") left room " << id << std::endl;
 
-			sendSignal(6, lClient.id);
-			sendSignalToSpectators(6, lClient.id);
+			sendSignal(6, client.id);
+			sendSignalToSpectators(6, client.id);
 
 			if (gamemode == 4)
 				if (tournamentGame != nullptr)
@@ -137,22 +133,22 @@ void Room::leave(Client& lClient) {
 		}
 }
 
-void Room::matchLeaver(Client& lClient) {
+void Room::matchLeaver(Client& client) {
 	if (gamemode != 5)
 		return;
 	if (currentPlayers == 2) {
 		if (clients.front()->roundStats.score == 4 || clients.back()->roundStats.score == 4) {
-			conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
-			lClient.sendSignal(22);
+			conn.lobby.matchmaking1vs1.setQueueing(client, conn.serverClock.getElapsedTime());
+			client.sendSignal(22);
 		}
 		else {
-			conn.lobby.matchmaking1vs1.removeFromQueue(lClient);
-			lClient.sendSignal(21);
+			conn.lobby.matchmaking1vs1.removeFromQueue(client);
+			client.sendSignal(21);
 		}
 	}
 	else {
-		conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
-		lClient.sendSignal(22);
+		conn.lobby.matchmaking1vs1.setQueueing(client, conn.serverClock.getElapsedTime());
+		client.sendSignal(22);
 	}
 }
 
@@ -352,6 +348,10 @@ void Room::checkIfRoundEnded() {
 }
 
 void Room::sendLines(Client& client, uint16_t amount) {
+	uint16_t amountbefore = amount;
+	amount = client.hcp.send(amount);
+	if (amountbefore)
+		cout << client.id << " sending " << amountbefore << " -> " << amount << endl;
 	if (playersAlive == 1 || !amount)
 		return;
 
