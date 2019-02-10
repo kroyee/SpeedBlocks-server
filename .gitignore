@@ -8,6 +8,8 @@ Makefile
 !/Challenges/challenges.list
 /Tournaments/*
 !/Tournaments/.gitkeep
+**/*.exe
+.vscode
 
 # Cmake stuff
 CMakeCache.txt
