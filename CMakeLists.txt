@@ -4,7 +4,7 @@ project(SpeedBlocks-server)
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -16,16 +16,35 @@ endif()
 add_definitions(-DSFML_NO_DEPRECATED_WARNINGS)
 
 set(EXECUTABLE_NAME SpeedBlocks-server)
-file(GLOB SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.h ${CMAKE_SOURCE_DIR}/src/core/*.cpp ${CMAKE_SOURCE_DIR}/src/core/*.h ${CMAKE_SOURCE_DIR}/src/AI/*.cpp ${CMAKE_SOURCE_DIR}/src/AI/*.h ${CMAKE_SOURCE_DIR}/src/utility/*.cpp ${CMAKE_SOURCE_DIR}/src/utility/*.h ${CMAKE_SOURCE_DIR}/src/components/*.cpp ${CMAKE_SOURCE_DIR}/src/components/*.h ${CMAKE_SOURCE_DIR}/src/rooms/*.cpp ${CMAKE_SOURCE_DIR}/src/rooms/*.h )
+file(GLOB_RECURSE SOURCE_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp ${CMAKE_SOURCE_DIR}/src/*.h)
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
 
-target_include_directories(SpeedBlocks-server PUBLIC ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/core ${CMAKE_SOURCE_DIR}/src/components ${CMAKE_SOURCE_DIR}/src/rooms ${CMAKE_SOURCE_DIR}/src/utility ${CMAKE_SOURCE_DIR}/src/AI)
+file(GLOB_RECURSE INCLUDE_DIRS_TMP ${CMAKE_SOURCE_DIR}/src/*)
+set(INCLUDE_DIRS)
+foreach(f ${INCLUDE_DIRS_TMP})
+    get_filename_component(tmp ${f} DIRECTORY)
+    list(APPEND INCLUDE_DIRS ${tmp})
+endforeach(f)
+list(REMOVE_DUPLICATES INCLUDE_DIRS)
+
+target_include_directories(SpeedBlocks-server PUBLIC ${INCLUDE_DIRS})
 
 add_custom_target(run
     COMMAND lxterminal -e ./${EXECUTABLE_NAME}
     DEPENDS SpeedBlocks-server
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+if(POLICY CMP0074)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0074 NEW)
+endif()
+
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++ -static-libgcc -static -lpthread")
+    target_link_libraries(${EXECUTABLE_NAME} iphlpapi.lib)
+    set(SFML_STATIC_LIBRARIES TRUE)
+endif()
 
 find_package(SFML 2 COMPONENTS network system)
 if(NOT SFML_FOUND)
@@ -34,6 +53,13 @@ if(NOT SFML_FOUND)
 endif()
 include_directories(${SFML_INCLUDE_DIR})
 target_link_libraries(${EXECUTABLE_NAME} ${SFML_LIBRARIES})
+if(WIN32)
+    target_link_libraries(${EXECUTABLE_NAME} ${SFML_DEPENDENCIES})
+endif()
+
+if(POLICY CMP0074)
+    cmake_policy(POP)
+endif()
 
 find_package(Threads REQUIRED)
 target_link_libraries (${EXECUTABLE_NAME} ${CMAKE_THREAD_LIBS_INIT})

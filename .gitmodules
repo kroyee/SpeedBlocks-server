@@ -1,0 +1,3 @@
+[submodule "src/utility/shared"]
+	path = src/utility/shared
+	url = https://github.com/kroyee/SpeedBlocks-utility

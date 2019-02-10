@@ -21,7 +21,7 @@ public:
 	uint16_t & linesBlocked;
 	sf::Time minRemaining, offsetTime, addDelay;
 
-	uint16_t count();
+	uint16_t count() const;
 	void clear();
 	void add(uint16_t amount, const sf::Time& _time);
 	uint16_t block(uint16_t amount, const sf::Time& _time, bool freeze_incoming=true);

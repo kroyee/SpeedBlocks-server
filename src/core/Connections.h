@@ -1,76 +1,83 @@
 #ifndef CONNECTTIONS_H
 #define CONNECTTIONS_H
 #include <SFML/Network.hpp>
-#include <list>
-#include <thread>
-#include <memory>
 #include <iostream>
-#include "PacketCompress.h"
+#include <list>
+#include <memory>
+#include <thread>
 #include "Lobby.h"
+#include "PacketCompress.h"
 
 class Connections {
-public:
-	Connections();
+   public:
+    Connections(bool use_database = true);
 
-	std::list<std::shared_ptr<HumanClient>> clients;
+    bool use_database = true;
 
-	std::list<std::shared_ptr<HumanClient>> uploadData;
+    std::list<std::shared_ptr<HumanClient>> clients;
 
-	unsigned short tcpPort;
+    std::list<std::shared_ptr<HumanClient>> uploadData;
 
-	uint8_t id;
-	sf::TcpListener listener;
-	sf::SocketSelector selector;
-	sf::UdpSocket udpSock;
-	sf::Socket::Status status;
-	std::string serverkey, challongekey;
+    unsigned short tcpPort;
 
-	sf::Clock serverClock;
+    uint8_t id;
+    sf::TcpListener listener;
+    sf::SocketSelector selector;
+    sf::UdpSocket udpSock;
+    sf::Socket::Status status;
+    std::string serverkey, challongekey;
 
-	HumanClient* sender;
+    sf::Clock serverClock;
 
-	sf::IpAddress udpAdd;
-	unsigned short udpPort;
+    HumanClient* sender;
 
-	uint16_t clientVersion;
+    sf::IpAddress udpAdd;
+    unsigned short udpPort;
 
-	uint16_t clientCount;
+    uint16_t clientVersion;
 
-	Lobby lobby;
+    uint16_t clientCount;
 
-	PacketCompress extractor;
+    Lobby lobby;
 
-	bool setUpListener();
-	void listen();
-	void receive();
-	void disconnectClient(std::shared_ptr<HumanClient>&);
-	void send(Client&);
-	void send(Client&, HumanClient&);
-	void send(Room&);
-	void send(Room&, short);
-	void sendUDP(HumanClient& client, sf::Packet& packet);
-	void sendSignal(uint8_t signalId, int id1 = -1, int id2 = -1);
+    bool setUpListener();
+    void listen();
+    void receive();
+    void disconnectClient(std::shared_ptr<HumanClient>&);
+    void send(Client&);
+    void send(Client&, HumanClient&);
+    void send(Room&);
+    void send(Room&, short);
+    void sendUDP(HumanClient& client, PM& packet);
 
-	void sendWelcomeMsg();
-	void sendAuthResult(uint8_t authresult, Client& client);
-	void sendChatMsg(sf::Packet& packet);
-	void sendClientJoinedServerInfo(HumanClient& client);
-	void sendClientLeftServerInfo(HumanClient& client);
+    void sendWelcomeMsg();
+    void sendAuthResult(uint8_t authresult, Client& client);
+    void sendChatMsg(const NP_ChatMsg&);
+    void sendClientJoinedServerInfo(HumanClient& client);
+    void sendClientLeftServerInfo(HumanClient& client);
 
-	void validateClient(sf::Packet& packet);
-	void validateUDP(sf::Packet& packet);
-	void getGamestate(sf::Packet& packet);
+    void validateClient(const NP_LoginRequest&);
+    void validateUDP(const NP_ConfirmUdp&);
+    void getGamestate(const NP_Gamestate&);
 
-	void manageRooms();
-	void manageClients();
-	void manageUploadData();
-	void manageTournaments();
-	void manageMatchmaking();
+    void manageRooms();
+    void manageClients();
+    void manageUploadData();
+    void manageTournaments();
+    void manageMatchmaking();
 
-	void handlePacket(sf::Packet& packet);
+    void handlePacket(sf::Packet& packet);
 
-	bool getKey();
-	bool getUploadData(HumanClient&);
+    bool getKey();
+    bool getUploadData(HumanClient&);
+
+    template <class F>
+    auto serialize(F f) {
+        NP_ClientList list;
+        for (auto& client : lobby.aiManager.getBots()) list.clients.push_back({client.first, client.second});
+        for (auto&& client : clients) list.clients.push_back({client->id, client->name});
+        return f(list);
+    }
 };
 
 #endif

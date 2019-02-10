@@ -1,446 +1,375 @@
 #include "Room.h"
+#include <algorithm>
 #include "Connections.h"
 #include "Tournament.h"
-#include <algorithm>
 using std::cout;
 using std::endl;
 
-Room::Room(Connections& _conn, uint16_t _gamemode) :
-conn(_conn),
-active(false),
-round(false),
-waitForReplay(false),
-locked(false),
-gamemode(_gamemode),
-tournamentGame(nullptr) {}
+Room::Room(Connections& _conn, uint16_t _gamemode)
+    : conn(_conn), active(false), round(false), waitForReplay(false), locked(false), gamemode(_gamemode), tournamentGame(nullptr) {}
 
 void Room::startGame() {
-	round=true;
-	playersAlive = activePlayers;
-	leavers.clear();
-	lineSendAdjust.clear();
-	endround=false;
-	countdown=false;
-	start.restart();
+    round = true;
+    playersAlive = activePlayers;
+    leavers.clear();
+    lineSendAdjust.clear();
+    endround = false;
+    countdown = false;
+    start.restart();
 
-	for (auto&& client : clients)
-		client->startGame();
+    for (auto&& client : clients) client->startGame();
 }
 
 void Room::startCountdown() {
-	countdownTime=sf::seconds(0);
-	countdown=true;
-	playersAlive=activePlayers;
-	start.restart();
-	seed1 = rand();
-	seed2 = rand();
-	
-	for (auto& client : clients)
-		client->updateSpeed();
+    countdownTime = sf::seconds(0);
+    countdown = true;
+    playersAlive = activePlayers;
+    start.restart();
+    seed1 = rand();
+    seed2 = rand();
 
-	for (auto& client : clients)
-		client->seed(seed1, seed2);
+    for (auto& client : clients) client->updateSpeed();
 
-	for (auto& client : spectators)
-		client->seed(seed1, seed2, 10);
+    for (auto& client : clients) client->seed(seed1, seed2);
+
+    for (auto& client : spectators) client->seed(seed1, seed2, 1);
 }
 
 void Room::transfearScore() {
-	for (auto&& leaver : leavers) {
-		for (auto&& client : conn.clients)
-			if (leaver.id == client->id) {
-				client->stats.ffaPoints += leaver.stats.ffaPoints;
-				client->stats.updateFFARank();
-				client->stats.vsPoints = leaver.stats.vsPoints;
-				client->stats.heroPoints = leaver.stats.heroPoints;
-			}
-		for (auto&& client : conn.uploadData)
-			if (leaver.id == client->id) {
-				client->stats.ffaPoints += leaver.stats.ffaPoints;
-				client->stats.updateFFARank();
-				client->stats.vsPoints = leaver.stats.vsPoints;
-				client->stats.heroPoints = leaver.stats.heroPoints;
-			}
-	}
-	leavers.clear();
+    for (auto&& leaver : leavers) {
+        for (auto&& client : conn.clients)
+            if (leaver.id == client->id) {
+                client->stats.ffaPoints += leaver.stats.ffaPoints;
+                client->stats.updateFFARank();
+                client->stats.vsPoints = leaver.stats.vsPoints;
+                client->stats.heroPoints = leaver.stats.heroPoints;
+            }
+        for (auto&& client : conn.uploadData)
+            if (leaver.id == client->id) {
+                client->stats.ffaPoints += leaver.stats.ffaPoints;
+                client->stats.updateFFARank();
+                client->stats.vsPoints = leaver.stats.vsPoints;
+                client->stats.heroPoints = leaver.stats.heroPoints;
+            }
+    }
+    leavers.clear();
 }
 
 void Room::endRound() {
-	if (round)
-		for (auto&& client : clients)
-			client->ready=false;
-	round=false;
-	countdown=false;
-	roundLenght = start.restart();
+    if (round)
+        for (auto&& client : clients) client->ready = false;
+    round = false;
+    countdown = false;
+    roundLenght = start.restart();
 
-	for (auto& client : clients)
-		client->endRound();
+    for (auto& client : clients) client->endRound();
 }
 
 void Room::join(Client& jClient) {
-	if (currentPlayers<maxPlayers || maxPlayers == 0) {
-		if (jClient.spectating)
-			jClient.spectating->removeSpectator(jClient);
-		if (jClient.matchmaking && gamemode != 5) {
-			conn.lobby.matchmaking1vs1.removeFromQueue(jClient);
-			jClient.sendSignal(21);
-		}
-		currentPlayers++;
-		activePlayers++;
-		clients.push_back(&jClient);
-		if ((activePlayers > 1 && !onlyBots()) || gamemode >= 20000)
-			setActive();
-		jClient.room = this;
-		jClient.alive=false;
-		jClient.datavalid=false;
-		jClient.away=false;
-		jClient.datacount=250;
-		jClient.ready=false;
-		jClient.roundStats.clear();
-		jClient.history.clear();
-		std::cout << jClient.id << " joined room " << id << std::endl;
-	}
+    if (currentPlayers < maxPlayers || maxPlayers == 0) {
+        if (jClient.spectating) jClient.spectating->removeSpectator(jClient);
+        if (jClient.matchmaking && gamemode != 5) {
+            conn.lobby.matchmaking1vs1.removeFromQueue(jClient);
+            jClient.sendPacket(PM::make<NP_ClientRemovedMatchmaking>());
+        }
+        currentPlayers++;
+        activePlayers++;
+        clients.push_back(&jClient);
+        if ((activePlayers > 1 && !onlyBots()) || gamemode >= 20000) setActive();
+        jClient.room = this;
+        jClient.alive = false;
+        jClient.datavalid = false;
+        jClient.away = false;
+        jClient.data.count = 250;
+        jClient.ready = false;
+        jClient.roundStats.clear();
+        jClient.history.clear();
+        std::cout << jClient.id << " joined room " << id << std::endl;
+    }
 }
 
 void Room::leave(Client& lClient) {
-	for (auto it = clients.begin(); it != clients.end(); it++)
-		if ((*it)->id == lClient.id) {
-			matchLeaver(lClient);
-			currentPlayers--;
-			if (!lClient.away)
-				activePlayers--;
-			if (lClient.alive) {
-				lClient.roundStats.position=playersAlive;
-				playerDied(lClient);
-			}
-			if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
-				leavers.emplace_back();
-				leavers.back().roundStats = lClient.roundStats;
-				leavers.back().stats = lClient.stats;
-				leavers.back().id = lClient.id;
-				leavers.back().stats.ffaPoints=0;
-			}
-			it = clients.erase(it);
-			if (activePlayers < 2 || onlyBots())
-				setInactive();
-			lClient.roundStats.incLines = 0;
-			lClient.room = nullptr;
-			std::cout << lClient.id << " left room " << id << std::endl;
+    for (auto it = clients.begin(); it != clients.end(); it++)
+        if ((*it)->id == lClient.id) {
+            matchLeaver(lClient);
+            currentPlayers--;
+            if (!lClient.away) activePlayers--;
+            if (lClient.alive) {
+                lClient.roundStats.position = playersAlive;
+                playerDied(lClient);
+            }
+            if ((gamemode == 1 || gamemode == 2 || gamemode == 4 || gamemode || 5) && !lClient.guest) {
+                leavers.emplace_back();
+                leavers.back().roundStats = lClient.roundStats;
+                leavers.back().stats = lClient.stats;
+                leavers.back().id = lClient.id;
+                leavers.back().stats.ffaPoints = 0;
+            }
+            it = clients.erase(it);
+            if (activePlayers < 2 || onlyBots()) setInactive();
+            lClient.roundStats.incLines = 0;
+            lClient.room = nullptr;
+            std::cout << lClient.id << " left room " << id << std::endl;
 
-			sendSignal(6, lClient.id);
-			sendSignalToSpectators(6, lClient.id);
+            auto packet = PM::make<NP_ClientLeftRoom>(lClient.id);
+            sendPacket(packet);
+            sendPacketToSpectators(packet);
 
-			if (gamemode == 4)
-				if (tournamentGame != nullptr)
-					tournamentGame->resetWaitTimeSent();
-			break;
-		}
+            if (gamemode == 4)
+                if (tournamentGame != nullptr) tournamentGame->resetWaitTimeSent();
+            break;
+        }
 }
 
 void Room::matchLeaver(Client& lClient) {
-	if (gamemode != 5)
-		return;
-	if (currentPlayers == 2) {
-		if (clients.front()->roundStats.score == 4 || clients.back()->roundStats.score == 4) {
-			conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
-			lClient.sendSignal(22);
-		}
-		else {
-			conn.lobby.matchmaking1vs1.removeFromQueue(lClient);
-			lClient.sendSignal(21);
-		}
-	}
-	else {
-		conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
-		lClient.sendSignal(22);
-	}
+    if (gamemode != 5) return;
+    if (currentPlayers == 2) {
+        if (clients.front()->roundStats.game_score == 4 || clients.back()->roundStats.game_score == 4) {
+            conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
+            lClient.sendPacket(PM::make<NP_ClientStillInMatchmaking>());
+        } else {
+            conn.lobby.matchmaking1vs1.removeFromQueue(lClient);
+            lClient.sendPacket(PM::make<NP_ClientRemovedMatchmaking>());
+        }
+    } else {
+        conn.lobby.matchmaking1vs1.setQueueing(lClient, conn.serverClock.getElapsedTime());
+        lClient.sendPacket(PM::make<NP_ClientStillInMatchmaking>());
+    }
 }
 
 bool Room::addSpectator(HumanClient& client) {
-	if (client.room || client.spectating == this)
-		return false;
-	if (client.spectating)
-		client.spectating->removeSpectator(client);
-	spectators.push_back(&client);
-	client.spectating = this;
-	return true;
+    if (client.room || client.spectating == this) return false;
+    if (client.spectating) client.spectating->removeSpectator(client);
+    spectators.push_back(&client);
+    client.spectating = this;
+    return true;
 }
 
 void Room::removeSpectator(Client& client) {
-	for (auto it = spectators.begin(); it != spectators.end(); it++)
-		if ((*it)->id == client.id) {
-			spectators.erase(it);
-			client.spectating = nullptr;
-			return;
-		}
+    for (auto it = spectators.begin(); it != spectators.end(); it++)
+        if ((*it)->id == client.id) {
+            spectators.erase(it);
+            client.spectating = nullptr;
+            return;
+        }
 }
 
 void Room::sendNewPlayerInfo(Client& client) {
-	sf::Packet packet;
-	uint8_t packetid = 4;
-	packet << packetid << client.id << client.name;
-	sendPacket(packet);
+    PM packet;
+    NP_ClientJoinedRoom info{{client.id, client.name}};
+    packet.write(info);
+    sendPacket(packet);
 }
 
 void Room::sendRoundScores() {
-	sf::Packet packet;
-	uint8_t packetid = 8, count=0;
-	for (auto&& client : clients)
-		if (client->roundStats.position)
-			count++;
-	packet << packetid << (uint16_t)roundLenght.asSeconds() << count;
-	clients.sort([](Client* c1, Client* c2) { return c1->roundStats.score > c2->roundStats.score; });
-	for (auto&& client : clients) {
-		if (client->roundStats.position) {
-			packet << client->id << client->roundStats.maxCombo << client->roundStats.linesSent << client->roundStats.linesReceived;
-			packet << client->roundStats.linesBlocked << client->roundStats.bpm << client->stats.ffaRank << client->roundStats.position;
-			packet << client->roundStats.score << client->roundStats.linesAdjusted << uint16_t(client->stats.ffaPoints+1000);
-		}
-	}
-	sendPacket(packet);
+    clients.sort([](Client* c1, Client* c2) { return c1->roundStats.game_score > c2->roundStats.game_score; });
+    NP_RoomScore data;
+    data.round_lenght = roundLenght.asSeconds();
+
+    for (auto&& client : clients) {
+        if (client->roundStats.position) {
+            data.scores.push_back({client->roundStats.score, client->id, client->stats.ffaRank, client->roundStats.position, client->roundStats.game_score,
+                                   client->roundStats.linesAdjusted, static_cast<uint16_t>(client->stats.ffaPoints + 1000)});
+        }
+    }
+
+    PM packet;
+    packet.write(data);
+    sendPacket(packet);
 }
 
 void Room::updatePlayerScore() {
-	for (auto&& client : clients) {
-		if (client->roundStats.maxCombo > client->stats.maxCombo)
-			client->stats.maxCombo = client->roundStats.maxCombo;
-		client->stats.totalBpm+=client->roundStats.bpm;
-		if (client->stats.totalPlayed > 0)
-			client->stats.avgBpm = (float)client->stats.totalBpm / (float)client->stats.totalPlayed;
-	}
+    for (auto&& client : clients) {
+        if (client->roundStats.score.max_combo > client->stats.maxCombo) client->stats.maxCombo = client->roundStats.score.max_combo;
+        client->stats.totalBpm += client->roundStats.score.bpm;
+        if (client->stats.totalPlayed > 0) client->stats.avgBpm = (float)client->stats.totalBpm / (float)client->stats.totalPlayed;
+    }
 }
 
 void Room::score1vs1Round() {
-	if (currentPlayers + leavers.size() < 2)
-		return;
+    if (currentPlayers + leavers.size() < 2) return;
 
-	Client *winner = nullptr, *loser = nullptr;
-	for (auto client : clients)
-		if (client->roundStats.position == 1)
-			winner = client;
-	for (auto client : clients)
-		if (client->roundStats.position == 2)
-			loser = client;
-	for (auto& client : leavers)
-		if (client.roundStats.position == 2)
-			loser = &client;
+    Client *winner = nullptr, *loser = nullptr;
+    for (auto client : clients)
+        if (client->roundStats.position == 1) winner = client;
+    for (auto client : clients)
+        if (client->roundStats.position == 2) loser = client;
+    for (auto& client : leavers)
+        if (client.roundStats.position == 2) loser = &client;
 
-	if (!winner || !loser)
-		return;
+    if (!winner || !loser) return;
 
-	winner->roundStats.score++;
-	eloResults.addResult(*winner, *loser, 1);
-	eloResults.calculateResults();
+    winner->roundStats.game_score++;
+    eloResults.addResult(*winner, *loser, 1);
+    eloResults.calculateResults();
 
-	if (gamemode == 4) {
-		tournamentGame->sendScore();
-		return;
-	}
+    if (gamemode == 4) {
+        tournamentGame->sendScore();
+        return;
+    }
 
-	sf::Packet packet;
-	packet << (uint8_t)24 << winner->id << loser->id;
-	if (winner->roundStats.score == 4 || loser->roundStats.score == 4) {
-		lock();
-		packet << (uint8_t)255;
-	}
-	else
-		packet << (uint8_t)0;
-	packet << (uint8_t)0 << (uint8_t)winner->roundStats.score << (uint8_t)loser->roundStats.score;
+    const uint16_t game_limit_1v1 = 4;
+    uint8_t status = 0;
+    if (winner->roundStats.game_score == game_limit_1v1 || loser->roundStats.game_score == game_limit_1v1) {
+        status = 255;
+        lock();
+    }
 
-	sendPacket(packet);
+    NP_GameScore score;
+    score.scores.push_back({winner->id, 0, static_cast<uint8_t>(winner->roundStats.game_score), status});
+    score.scores.push_back({winner->id, 0, static_cast<uint8_t>(loser->roundStats.game_score), status});
 
-	timeBetweenRounds = sf::seconds(3);
+    PM packet;
+    packet.write(score);
+
+    sendPacket(packet);
+    timeBetweenRounds = sf::seconds(3);
 }
 
 void Room::playerDied(Client& died) {
-	playersAlive--;
-	lineSendAdjust.addAdjust(died, clients, playersAlive);
-	if (playersAlive < 2)
-		endround=true;
+    died.roundStats.position = playersAlive;
+    playersAlive--;
+    lineSendAdjust.addAdjust(died, clients, playersAlive);
+    if (playersAlive < 2) endround = true;
 }
 
 void Room::setInactive() {
-	if (!active) return;
-	active=false;
-	if (round) {
-		endround=true;
-		checkIfRoundEnded();
-	}
-	else
-		endRound();
-	round=false;
-	countdown=false;
-	start.restart();
+    if (!active) return;
+    active = false;
+    if (round) {
+        endround = true;
+        checkIfRoundEnded();
+    } else
+        endRound();
+    round = false;
+    countdown = false;
+    start.restart();
 }
 
 void Room::setActive() {
-	if (locked)
-		return;
-	active=true;
-	countdown=false;
+    if (locked) return;
+    active = true;
+    countdown = false;
 }
 
 void Room::lock() {
-	active=false;
-	locked=true;
+    active = false;
+    locked = true;
 }
 
 void Room::sendGameData(sf::UdpSocket& udp) {
-	for (auto&& client : clients) {
-		if (client->datavalid)
-			client->sendGameData(udp);
+    for (auto&& client : clients) {
+        if (client->datavalid) client->sendGameData(udp);
 
-		sendLines(*client, client->sendLinesOut());
-	}
+        sendLines(*client, client->sendLinesOut());
+    }
 }
 
 void Room::makeCountdown() {
-	if (!round) {
-		if (countdown) {
-			sf::Time t = start.getElapsedTime();
-			if (t > sf::seconds(3)) {
-				start.restart();
-				sendSignalToActive(5, 1);
-				sendSignalToAway(5, 0);
-				sendSignalToSpectators(5, 0);
-				startGame();
-			}
-			else if (t > countdownTime) {
-				countdownTime+=sf::milliseconds(200);
-				for (auto& client : clients) {
-					if (!client->away) {
-						client->countDown(t);
-					}
-				}
-			}
-		}
-		else if (timeBetweenRounds != sf::seconds(0) && start.getElapsedTime() > timeBetweenRounds)
-			startCountdown();
-		else {
-			bool allready=true;
-			for (auto&& client : clients)
-				if (!client->away && !client->ready)
-					allready=false;
-			if (allready && !waitForReplay)
-				startCountdown();
-		}
-	}
+    if (!round) {
+        if (countdown) {
+            sf::Time t = start.getElapsedTime();
+            if (t > sf::seconds(3)) {
+                start.restart();
+                sendPacketToActive(PM::make<NP_CountdownStop>(static_cast<uint8_t>(1)));
+                auto packet = PM::make<NP_CountdownStop>(static_cast<uint8_t>(0));
+                sendPacketToAway(packet);
+                sendPacketToSpectators(packet);
+                startGame();
+            } else if (t > countdownTime) {
+                countdownTime += sf::milliseconds(200);
+                for (auto& client : clients) {
+                    if (!client->away) {
+                        client->countDown(t);
+                    }
+                }
+            }
+        } else if (timeBetweenRounds != sf::seconds(0) && start.getElapsedTime() > timeBetweenRounds)
+            startCountdown();
+        else {
+            bool allready = true;
+            for (auto&& client : clients)
+                if (!client->away && !client->ready) allready = false;
+            if (allready && !waitForReplay) startCountdown();
+        }
+    }
 }
 
 void Room::checkIfRoundEnded() {
-	if (round) {
-		if (endround) {
-			for (auto&& winner : clients)
-				if (winner->alive) {
-					winner->alive=false;
-					winner->roundStats.position=1;
-					winner->sendSignal(8);
+    if (round) {
+        if (endround) {
+            for (auto&& winner : clients)
+                if (winner->alive) {
+                    winner->alive = false;
+                    winner->roundStats.position = 1;
+                    winner->sendPacket(PM::make<NP_YouWon>());
 
-					sendSignal(13, winner->id, winner->roundStats.position);
-					sendSignalToSpectators(13, winner->id, winner->roundStats.position);
+                    auto packet = PM::make<NP_PlayerPosition>(winner->id, winner->roundStats.position);
+                    sendPacket(packet);
+                    sendPacketToSpectators(packet);
 
-					scoreRound();
-					transfearScore();
+                    scoreRound();
+                    transfearScore();
 
-					if (!winner->isHuman())
-						winner->makeWinner();
-					break;
-				}
-			endRound();
-		}
-	}
+                    if (!winner->isHuman()) winner->makeWinner();
+                    break;
+                }
+            endRound();
+        }
+    }
 }
 
 void Room::sendLines(Client& client, uint16_t amount) {
-	if (playersAlive == 1 || !amount)
-		return;
+    if (playersAlive == 1 || !amount) return;
 
-	float lineAdjust = lineSendAdjust.getAdjust(client.roundStats.linesSent, amount);
+    float lineAdjust = lineSendAdjust.getAdjust(client.roundStats.score.lines_sent, amount);
 
-	client.roundStats.linesSent+=amount;
-	client.roundStats.linesAdjusted+=lineAdjust;
-	float actualSend=amount-lineAdjust;
-	actualSend /= playersAlive-1;
+    client.roundStats.score.lines_sent += amount;
+    client.roundStats.linesAdjusted += lineAdjust;
+    float actualSend = amount - lineAdjust;
+    actualSend /= playersAlive - 1;
 
-	distributeLines(client.id, actualSend);
+    distributeLines(client.id, actualSend);
 }
 
 void Room::distributeLines(uint16_t senderid, float amount) {
-	for (auto& client : clients)
-		if (client->id != senderid && client->alive) {
-			client->roundStats.incLines+=amount;
-			client->sendLines();
-		}
+    for (auto& client : clients)
+        if (client->id != senderid && client->alive) {
+            client->roundStats.incLines += amount;
+            client->sendLines();
+        }
 }
 
-void Room::sendSignal(uint8_t signalId, int id1, int id2) {
-	sf::Packet packet;
-	packet << (uint8_t)254 << signalId;
-	if (id1 > -1)
-		packet << (uint16_t)id1;
-	if (id2 > -1)
-		packet << (uint16_t)id2;
-	for (auto&& client : clients)
-		client->sendPacket(packet);
+void Room::sendPacket(PM& packet) {
+    sendPacketToPlayers(packet);
+    sendPacketToSpectators(packet);
 }
 
-void Room::sendSignalToAway(uint8_t signalId, int id1, int id2) {
-	sf::Packet packet;
-	packet << (uint8_t)254 << signalId;
-	if (id1 > -1)
-		packet << (uint16_t)id1;
-	if (id2 > -1)
-		packet << (uint16_t)id2;
-	for (auto&& client : clients)
-		if (client->away)
-			client->sendPacket(packet);
+void Room::sendPacketToPlayers(PM& packet) {
+    for (auto& client : clients) client->sendPacket(packet);
 }
 
-void Room::sendSignalToActive(uint8_t signalId, int id1, int id2) {
-	sf::Packet packet;
-	packet << (uint8_t)254 << signalId;
-	if (id1 > -1)
-		packet << (uint16_t)id1;
-	if (id2 > -1)
-		packet << (uint16_t)id2;
-	for (auto&& client : clients)
-		if (!client->away)
-			client->sendPacket(packet);
+void Room::sendPacketToSpectators(PM& packet) {
+    for (auto& spectator : spectators) spectator->sendPacket(packet);
 }
 
-
-void Room::sendSignalToSpectators(uint8_t signalId, int id1, int id2) {
-	sf::Packet packet;
-	packet << (uint8_t)254 << signalId;
-	if (id1 > -1)
-		packet << (uint16_t)id1;
-	if (id2 > -1)
-		packet << (uint16_t)id2;
-	for (auto&& spectator : spectators)
-		spectator->sendPacket(packet);
+void Room::sendPacketToAway(PM& packet) {
+    for (auto& client : clients) {
+        if (client->away) client->sendPacket(packet);
+    }
 }
 
-void Room::sendPacket(sf::Packet& packet) {
-	sendPacketToPlayers(packet);
-	sendPacketToSpectators(packet);
-}
-
-void Room::sendPacketToPlayers(sf::Packet& packet) {
-	for (auto& client : clients)
-		client->sendPacket(packet);
-}
-
-void Room::sendPacketToSpectators(sf::Packet& packet) {
-	for (auto& spectator : spectators)
-		spectator->sendPacket(packet);
+void Room::sendPacketToActive(PM& packet) {
+    for (auto& client : clients) {
+        if (!client->away) client->sendPacket(packet);
+    }
 }
 
 bool Room::onlyBots() {
-	for (auto& client : clients)
-		if (client->isHuman())
-			return false;
+    for (auto& client : clients)
+        if (client->isHuman()) return false;
 
-	return spectators.empty();
+    return spectators.empty();
 }
 
 //////////////////////////////////////////////
@@ -448,43 +377,42 @@ bool Room::onlyBots() {
 //////////////////////////////////////////////
 
 void FFARoom::scoreRound() {
-	if (currentPlayers + leavers.size() < 2)
-		return;
+    if (currentPlayers + leavers.size() < 2) return;
 
-	std::vector<Client*> inround;
-	float avgrank=0;
+    std::vector<Client*> inround;
+    float avgrank = 0;
 
-	for (auto& client : clients) {
-		if (client->roundStats.position) {
-			client->roundStats.score += currentPlayers - client->roundStats.position;
-			if (client->stats.ffaRank && !client->guest) {
-				inround.push_back(client);
-				avgrank+=client->stats.ffaRank;
-			}
-		}
-	}
-	for (auto& client : leavers) {
-		if (client.roundStats.position && client.stats.ffaRank) {
-			inround.push_back(&client);
-			avgrank+=client.stats.ffaRank;
-		}
-	}
-	float playersinround = inround.size();
-	if (!playersinround)
-		return;
-	avgrank/=playersinround;
+    for (auto& client : clients) {
+        if (client->roundStats.position) {
+            client->roundStats.game_score += currentPlayers - client->roundStats.position;
+            if (client->stats.ffaRank && !client->guest) {
+                inround.push_back(client);
+                avgrank += client->stats.ffaRank;
+            }
+        }
+    }
+    for (auto& client : leavers) {
+        if (client.roundStats.position && client.stats.ffaRank) {
+            inround.push_back(&client);
+            avgrank += client.stats.ffaRank;
+        }
+    }
+    float playersinround = inround.size();
+    if (!playersinround) return;
+    avgrank /= playersinround;
 
-	std::sort(inround.begin(), inround.end(), [](Client* c1, Client* c2) { return c1->roundStats.position < c2->roundStats.position; });
+    std::sort(inround.begin(), inround.end(), [](Client* c1, Client* c2) { return c1->roundStats.position < c2->roundStats.position; });
 
-	int i=0;
-	for (auto client : inround) {
-		float pointcoff = ((((float)i+1)/(float)playersinround) - 1.0/(float)playersinround  - (1.0-1.0/(float)playersinround)/2.0) * (-1.0/ ((1.0-1.0/(float)playersinround)/2.0) );
-		pointcoff += (client->stats.ffaRank - avgrank) * 0.05 + 0.2;
-		client->stats.ffaPoints += 100*pointcoff*(client->stats.ffaRank/5.0);
-		client->stats.updateFFARank();
+    int i = 0;
+    for (auto client : inround) {
+        float pointcoff = ((((float)i + 1) / (float)playersinround) - 1.0 / (float)playersinround - (1.0 - 1.0 / (float)playersinround) / 2.0) *
+                          (-1.0 / ((1.0 - 1.0 / (float)playersinround) / 2.0));
+        pointcoff += (client->stats.ffaRank - avgrank) * 0.05 + 0.2;
+        client->stats.ffaPoints += 100 * pointcoff * (client->stats.ffaRank / 5.0);
+        client->stats.updateFFARank();
 
-		i++;
-	}
+        i++;
+    }
 }
 
 //////////////////////////////////////////////
@@ -492,38 +420,31 @@ void FFARoom::scoreRound() {
 //////////////////////////////////////////////
 
 void HeroRoom::scoreRound() {
-	if (currentPlayers + leavers.size() < 2)
-		return;
+    if (currentPlayers + leavers.size() < 2) return;
 
-	for (auto winner : clients)
-		if (winner->roundStats.position) {
-			for (auto loser : clients)
-				if (loser->roundStats.position && winner->roundStats.position < loser->roundStats.position)
-					eloResults.addResult(*winner, *loser, 2);
-			for (auto& loser : leavers)
-				if (loser.roundStats.position && winner->roundStats.position < loser.roundStats.position)
-					eloResults.addResult(*winner, loser, 2);
-		}
-	for (auto& winner : leavers)
-		if (winner.roundStats.position) {
-			for (auto loser : clients)
-				if (loser->roundStats.position && winner.roundStats.position < loser->roundStats.position)
-					eloResults.addResult(winner, *loser, 2);
-			for (auto& loser : leavers)
-				if (loser.roundStats.position && winner.roundStats.position < loser.roundStats.position)
-					eloResults.addResult(winner, loser, 2);
-		}
+    for (auto winner : clients)
+        if (winner->roundStats.position) {
+            for (auto loser : clients)
+                if (loser->roundStats.position && winner->roundStats.position < loser->roundStats.position) eloResults.addResult(*winner, *loser, 2);
+            for (auto& loser : leavers)
+                if (loser.roundStats.position && winner->roundStats.position < loser.roundStats.position) eloResults.addResult(*winner, loser, 2);
+        }
+    for (auto& winner : leavers)
+        if (winner.roundStats.position) {
+            for (auto loser : clients)
+                if (loser->roundStats.position && winner.roundStats.position < loser->roundStats.position) eloResults.addResult(winner, *loser, 2);
+            for (auto& loser : leavers)
+                if (loser.roundStats.position && winner.roundStats.position < loser.roundStats.position) eloResults.addResult(winner, loser, 2);
+        }
 
-	eloResults.calculateResults();
+    eloResults.calculateResults();
 }
 
 //////////////////////////////////////////////
 //					1vs1					//
 //////////////////////////////////////////////
 
-void VSRoom::scoreRound() {
-	score1vs1Round();
-}
+void VSRoom::scoreRound() { score1vs1Round(); }
 
 //////////////////////////////////////////////
 //					Casual					//
@@ -534,21 +455,17 @@ void VSRoom::scoreRound() {
 //////////////////////////////////////////////
 
 void TournamentRoom::scoreRound() {
-	if (tournamentGame == nullptr)
-		return;
-	for (auto&& client : clients)
-		if (client->roundStats.position == 1) {
-			if (tournamentGame->player1->id == client->id) {
-				if (tournamentGame->p1won())
-					lock();
-			}
-			else if (tournamentGame->player2->id == client->id) {
-				if (tournamentGame->p2won())
-					lock();
-			}
-			score1vs1Round();
-			return;
-		}
+    if (tournamentGame == nullptr) return;
+    for (auto&& client : clients)
+        if (client->roundStats.position == 1) {
+            if (tournamentGame->player1->id == client->id) {
+                if (tournamentGame->p1won()) lock();
+            } else if (tournamentGame->player2->id == client->id) {
+                if (tournamentGame->p2won()) lock();
+            }
+            score1vs1Round();
+            return;
+        }
 }
 
 //////////////////////////////////////////////
