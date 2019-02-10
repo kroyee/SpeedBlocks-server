@@ -262,6 +262,7 @@ void HumanClient::startGame() {
     data.count = 250;
     roundStats.clear();
     history.clear();
+    hcp.clear();
     if (!away && room) {
         room->incrementGamesPlayed(*this);
         alive = true;

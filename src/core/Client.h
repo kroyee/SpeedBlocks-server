@@ -7,6 +7,7 @@
 #include <list>
 #include <thread>
 #include "ClientHistory.h"
+#include "Handicap.h"
 #include "PingHandle.h"
 #include "StatsHolders.h"
 
@@ -30,9 +31,9 @@ class Client {
     bool matchmaking = false, sdataPutFailed = false, sdataInit = false, sdataPut = false, away = false, ready = false;
 
     RoundStats roundStats;
-
     StatsHolder stats;
 
+    Handicap hcp;
     PlayfieldHistory history;
 
     Tournament* tournament = nullptr;

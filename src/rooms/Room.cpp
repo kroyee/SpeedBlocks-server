@@ -320,6 +320,9 @@ void Room::checkIfRoundEnded() {
 }
 
 void Room::sendLines(Client& client, uint16_t amount) {
+    uint16_t amountbefore = amount;
+    amount = client.hcp.send(amount);
+    if (amountbefore) cout << client.id << " sending " << amountbefore << " -> " << amount << endl;
     if (playersAlive == 1 || !amount) return;
 
     float lineAdjust = lineSendAdjust.getAdjust(client.roundStats.score.lines_sent, amount);
