@@ -164,13 +164,11 @@ void Connections::sendWelcomeMsg() {
 }
 
 void Connections::sendAuthResult(uint8_t authresult, Client& client) {
-    PM packet;
     if (authresult == 2) {
         for (auto&& client : clients)  // Checking for duplicate names, and sending back 4 if found
             if (client->id != sender->id && client->name == sender->name) authresult = 4;
     }
-    NP_AuthResult result{authresult, client.id, client.name};
-    client.sendPacket(packet);
+    client.sendPacket(PM::make<NP_AuthResult>(authresult, client.id, client.name));
 }
 
 void Connections::sendChatMsg(const NP_ChatMsg& p) {
